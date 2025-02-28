@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Babylon.js 模型盖楼游戏</title>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        #floorPanel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            max-width: 200px;
+        }
+        .floor-btn {
+            display: block;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        .floor-btn:hover {
+            background-color: #45a049;
+        }
+        .floor-btn.active {
+            background-color: #2E7D32;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+        #instructions {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        #floorInfo {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            max-width: 200px;
+        }
+        #heightControls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .height-btn {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .height-btn:hover {
+            background-color: #0b7dda;
+        }
+        #resetBtn {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+        #resetBtn:hover {
+            background-color: #d32f2f;
+        }
+        #rotationControls {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        .rotation-btn {
+            margin: 5px;
+            padding: 8px 12px;
+            background-color: #9C27B0;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            width: 40px;
+        }
+        .rotation-btn:hover {
+            background-color: #7B1FA2;
+        }
+    </style>
+    <!-- 引入 Babylon.js 库 -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+</head>
+<body>
+    <canvas id="renderCanvas"></canvas>
+    
+    <div id="floorPanel">
+        <h3>楼层选择</h3>
+        <button class="floor-btn" data-floor="1">楼层 1</button>
+        <button class="floor-btn" data-floor="2">楼层 2</button>
+        <button class="floor-btn" data-floor="3">楼层 3</button>
+        <button class="floor-btn" data-floor="4">楼层 4</button>
+        <button class="floor-btn" data-floor="5">楼层 5</button>
+        <button class="floor-btn" data-floor="6">楼层 6</button>
+        <button class="floor-btn" data-floor="7">楼层 7</button>
+        <button class="floor-btn" data-floor="8">楼层 8</button>
+    </div>
+    
+    <div id="floorInfo">
+        <h3>当前楼层信息</h3>
+        <div id="currentFloorInfo">未选择楼层</div>
+    </div>
+    
+    <div id="heightControls">
+        <h3>高度控制</h3>
+        <button class="height-btn" id="moveUp">上移 ↑</button>
+        <button class="height-btn" id="moveDown">下移 ↓</button>
+        <button id="resetBtn">重置位置</button>
+    </div>
+    
+    <div id="rotationControls">
+        <h3>场景旋转控制</h3>
+        <div style="display: flex; justify-content: center;">
+            <button class="rotation-btn" id="rotateLeft">←</button>
+            <button class="rotation-btn" id="rotateRight">→</button>
+        </div>
+    </div>
+    
+    <div id="instructions">
+        <p>拖动鼠标左键: 移动楼层 | 鼠标右键: 旋转视角 | 鼠标滚轮: 缩放 | 上下键: 调整高度 | 左右键: 旋转整个场景</p>
+    </div>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function() {
+            // 获取画布元素
+            const canvas = document.getElementById('renderCanvas');
+            
+            // 创建 Babylon 引擎
+            const engine = new BABYLON.Engine(canvas, true);
+            
+            // 创建场景
+            const createScene = function() {
+                const scene = new BABYLON.Scene(engine);
+                
+                // 设置背景色
+                scene.clearColor = new BABYLON.Color4(0.75, 0.85, 0.9, 1.0);
+                
+                // 创建相机
+                const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/4, Math.PI/4, 3, new BABYLON.Vector3(0, 0, 0), scene);
+                camera.attachControl(canvas, true);
+                camera.lowerRadiusLimit = 0.5;
+                camera.upperRadiusLimit = 10;
+                
+                // 设置相机初始位置
+                camera.alpha = -Math.PI/4;
+                camera.beta = Math.PI/4;
+                camera.radius = 3;
+                
+                // 设置相机控制按钮
+                camera.inputs.attached.pointers.buttons = [2]; // 只允许右键控制相机，左键用于拖动
+                
+                // 创建光源
+                const light1 = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(1, 1, 0), scene);
+                light1.intensity = 0.7;
+                
+                const light2 = new BABYLON.DirectionalLight("light2", new BABYLON.Vector3(-1, -1, -1), scene);
+                light2.intensity = 0.5;
+                
+                // 创建光源容器，使光源不随相机旋转
+                const lightParent = new BABYLON.TransformNode("lightParent", scene);
+                light1.parent = lightParent;
+                light2.parent = lightParent;
+                
+                // 创建地面
+                const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 5, height: 5}, scene);
+                const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
+                groundMaterial.diffuseColor = new BABYLON.Color3(0.2, 0.2, 0.2);
+                ground.material = groundMaterial;
+                
+                // 存储已加载的楼层
+                const loadedFloors = {};
+                
+                // 当前选中的楼层
+                let selectedFloor = null;
+                
+                // 楼层的位置
+                const floorPositions = [];
+                
+                // 基础高度偏移量
+                const baseHeightOffset = 0.03; // 调整为3%的偏移量
+                
+                // 加载楼层模型
+                function loadFloorModel(floorNumber) {
+                    // 检查该楼层是否已经加载
+                    if (loadedFloors[floorNumber]) {
+                        console.log(`楼层 ${floorNumber} 已经加载`);
+                        selectedFloor = loadedFloors[floorNumber];
+                        updateFloorInfo();
+                        return;
+                    }
+                    
+                    // 显示加载状态
+                    const floorInfoElement = document.getElementById('currentFloorInfo');
+                    floorInfoElement.innerHTML = `正在加载楼层 ${floorNumber}...`;
+                    
+                    // 加载OBJ模型
+                    BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
+                        // 创建一个父节点来包含所有的网格
+                        const floorParent = new BABYLON.TransformNode(`floor${floorNumber}`, scene);
+                        
+                        // 将所有网格添加到父节点
+                        meshes.forEach(mesh => {
+                            if (mesh.id !== "__root__") {
+                                mesh.parent = floorParent;
+                            }
+                        });
+                        
+                        // 获取原始边界框（缩放前）
+                        let minY = Infinity;
+                        let maxY = -Infinity;
+                        
+                        meshes.forEach(mesh => {
+                            if (mesh.id !== "__root__") {
+                                const boundingInfo = mesh.getBoundingInfo();
+                                minY = Math.min(minY, boundingInfo.boundingBox.minimumWorld.y);
+                                maxY = Math.max(maxY, boundingInfo.boundingBox.maximumWorld.y);
+                            }
+                        });
+                        
+                        const originalHeight = maxY - minY;
+                        
+                        // 将模型缩小到原来的3%
+                        floorParent.scaling = new BABYLON.Vector3(0.01, 0.01, 0.01);
+                        
+                        // 计算缩放后的高度
+                        const scaledHeight = originalHeight * 0.01;
+                        
+                        // 计算楼层的高度位置
+                        let yPosition = baseHeightOffset; // 添加基础偏移，确保第一层不会嵌入地面
+                        
+                        // 按照楼层编号排序
+                        const sortedPositions = [...floorPositions].sort((a, b) => a.floor - b.floor);
+                        
+                        // 计算当前应该放置的高度
+                        for (let i = 0; i < sortedPositions.length; i++) {
+                            if (parseInt(sortedPositions[i].floor) < parseInt(floorNumber)) {
+                                yPosition += sortedPositions[i].height + baseHeightOffset; // 添加间隔
+                            }
+                        }
+                        
+                        // 设置楼层位置
+                        floorParent.position.y = yPosition;
+                        
+                        // 记录楼层位置和高度
+                        floorPositions.push({
+                            floor: floorNumber,
+                            position: floorParent.position.clone(),
+                            height: scaledHeight
+                        });
+                        
+                        // 存储已加载的楼层
+                        loadedFloors[floorNumber] = floorParent;
+                        
+                        // 设置为可拖动
+                        makeFloorDraggable(floorParent);
+                        
+                        // 选中新加载的楼层
+                        selectedFloor = floorParent;
+                        updateFloorInfo();
+                        
+                        console.log(`楼层 ${floorNumber} 已加载，高度: ${scaledHeight}, 位置Y: ${yPosition}`);
+                    });
+                }
+                
+                // 使楼层可拖动
+                function makeFloorDraggable(floor) {
+                    // 使用Babylon内置的拖动行为
+                    const pointerDragBehavior = new BABYLON.PointerDragBehavior({
+                        dragPlaneNormal: new BABYLON.Vector3(0, 1, 0)
+                    });
+                    
+                    // 只允许在XZ平面上拖动（保持Y不变）
+                    pointerDragBehavior.updateDragPlane = false;
+                    
+                    // 添加高亮材质
+                    const highlightMaterial = new BABYLON.StandardMaterial("highlightMaterial", scene);
+                    highlightMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+                    highlightMaterial.alpha = 0.7;
+                    
+                    // 存储原始材质
+                    const originalMaterials = {};
+                    
+                    // 高亮显示函数
+                    const highlightFloor = function() {
+                        floor.getChildMeshes().forEach(mesh => {
+                            if (mesh.material) {
+                                originalMaterials[mesh.id] = mesh.material;
+                                mesh.material = highlightMaterial;
+                            }
+                        });
+                    };
+                    
+                    // 恢复原始材质
+                    const restoreFloorMaterials = function() {
+                        floor.getChildMeshes().forEach(mesh => {
+                            if (originalMaterials[mesh.id]) {
+                                mesh.material = originalMaterials[mesh.id];
+                            }
+                        });
+                    };
+                    
+                    // 拖动开始事件
+                    pointerDragBehavior.onDragStartObservable.add(() => {
+                        selectedFloor = floor;
+                        highlightFloor();
+                        updateFloorInfo();
+                    });
+                    
+                    // 拖动事件
+                    pointerDragBehavior.onDragObservable.add(() => {
+                        updateFloorInfo();
+                    });
+                    
+                    // 拖动结束事件
+                    pointerDragBehavior.onDragEndObservable.add(() => {
+                        restoreFloorMaterials();
+                    });
+                    
+                    // 将拖动行为添加到楼层
+                    floor.addBehavior(pointerDragBehavior);
+                    
+                    // 点击选择楼层
+                    floor.getChildMeshes().forEach(mesh => {
+                        mesh.isPickable = true;
+                        
+                        mesh.actionManager = new BABYLON.ActionManager(scene);
+                        mesh.actionManager.registerAction(
+                            new BABYLON.ExecuteCodeAction(
+                                BABYLON.ActionManager.OnPickTrigger,
+                                function() {
+                                    selectedFloor = floor;
+                                    highlightFloor();
+                                    updateFloorInfo();
+                                    
+                                    // 延迟恢复材质，以便用户能看到高亮效果
+                                    setTimeout(() => {
+                                        restoreFloorMaterials();
+                                    }, 500);
+                                }
+                            )
+                        );
+                    });
+                }
+                
+                // 添加高度控制
+                function setupHeightControls() {
+                    const moveUpBtn = document.getElementById('moveUp');
+                    const moveDownBtn = document.getElementById('moveDown');
+                    const resetBtn = document.getElementById('resetBtn');
+                    const heightStep = 0.03; // 调整为3%的高度步长
+                    
+                    moveUpBtn.addEventListener('click', function() {
+                        if (selectedFloor) {
+                            selectedFloor.position.y += heightStep;
+                            updateFloorInfo();
+                        }
+                    });
+                    
+                    moveDownBtn.addEventListener('click', function() {
+                        if (selectedFloor) {
+                            selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
+                            updateFloorInfo();
+                        }
+                    });
+                    
+                    resetBtn.addEventListener('click', function() {
+                        if (selectedFloor) {
+                            const floorNumber = selectedFloor.name.replace('floor', '');
+                            const floorData = floorPositions.find(fp => fp.floor === floorNumber);
+                            
+                            if (floorData) {
+                                selectedFloor.position = floorData.position.clone();
+                                updateFloorInfo();
+                            }
+                        }
+                    });
+                    
+                    // 添加键盘控制
+                    window.addEventListener('keydown', function(e) {
+                        if (selectedFloor) {
+                            if (e.key === 'ArrowUp') {
+                                selectedFloor.position.y += heightStep;
+                                updateFloorInfo();
+                                e.preventDefault();
+                            } else if (e.key === 'ArrowDown') {
+                                selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
+                                updateFloorInfo();
+                                e.preventDefault();
+                            }
+                        }
+                    });
+                }
+                
+                // 添加旋转控制
+                function setupRotationControls() {
+                    const rotateLeftBtn = document.getElementById('rotateLeft');
+                    const rotateRightBtn = document.getElementById('rotateRight');
+                    const rotationStep = Math.PI / 2; // 90度
+                    let isRotating = false; // 是否正在旋转中
+                    
+                    // 动画旋转函数
+                    function animateRotation(targetAlpha) {
+                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
+                        
+                        isRotating = true;
+                        
+                        // 计算当前角度和目标角度
+                        const currentAlpha = camera.alpha;
+                        
+                        // 创建动画
+                        const animation = new BABYLON.Animation(
+                            "cameraRotation",
+                            "alpha",
+                            30, // 帧率
+                            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
+                            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
+                        );
+                        
+                        // 设置关键帧
+                        const keyFrames = [];
+                        keyFrames.push({
+                            frame: 0,
+                            value: currentAlpha
+                        });
+                        keyFrames.push({
+                            frame: 30, // 1秒动画
+                            value: targetAlpha
+                        });
+                        
+                        animation.setKeys(keyFrames);
+                        
+                        // 添加缓动函数，使动画更平滑
+                        const easingFunction = new BABYLON.QuadraticEase();
+                        easingFunction.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
+                        animation.setEasingFunction(easingFunction);
+                        
+                        // 停止之前的动画
+                        scene.stopAnimation(camera);
+                        
+                        // 开始新动画
+                        scene.beginDirectAnimation(
+                            camera,
+                            [animation],
+                            0,
+                            30,
+                            false, // 不循环
+                            1, // 速度
+                            function() { // 动画完成回调
+                                isRotating = false;
+                                updateCameraInfo();
+                            }
+                        );
+                    }
+                    
+                    rotateLeftBtn.addEventListener('click', function() {
+                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
+                        
+                        // 计算目标角度
+                        const targetAlpha = camera.alpha - rotationStep;
+                        // 确保角度在 -2π 到 2π 之间
+                        const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
+                        
+                        // 执行动画旋转
+                        animateRotation(normalizedTargetAlpha);
+                    });
+                    
+                    rotateRightBtn.addEventListener('click', function() {
+                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
+                        
+                        // 计算目标角度
+                        const targetAlpha = camera.alpha + rotationStep;
+                        // 确保角度在 -2π 到 2π 之间
+                        const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
+                        
+                        // 执行动画旋转
+                        animateRotation(normalizedTargetAlpha);
+                    });
+                    
+                    // 添加键盘控制
+                    window.addEventListener('keydown', function(e) {
+                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
+                        
+                        if (e.key === 'ArrowLeft') {
+                            // 计算目标角度
+                            const targetAlpha = camera.alpha - rotationStep;
+                            // 确保角度在 -2π 到 2π 之间
+                            const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
+                            
+                            // 执行动画旋转
+                            animateRotation(normalizedTargetAlpha);
+                            e.preventDefault();
+                        } else if (e.key === 'ArrowRight') {
+                            // 计算目标角度
+                            const targetAlpha = camera.alpha + rotationStep;
+                            // 确保角度在 -2π 到 2π 之间
+                            const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
+                            
+                            // 执行动画旋转
+                            animateRotation(normalizedTargetAlpha);
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    // 更新相机信息
+                    function updateCameraInfo() {
+                        const floorInfoElement = document.getElementById('currentFloorInfo');
+                        const cameraAngle = (camera.alpha * 180 / Math.PI).toFixed(0);
+                        
+                        // 如果有选中的楼层，则同时显示楼层和相机信息
+                        if (selectedFloor) {
+                            const floorNumber = selectedFloor.name.replace('floor', '');
+                            const floorPosition = selectedFloor.position;
+                            const floorRotation = selectedFloor.rotation;
+                            floorInfoElement.innerHTML = `
+                                <p><strong>楼层号:</strong> ${floorNumber}</p>
+                                <p><strong>位置:</strong> X: ${floorPosition.x.toFixed(2)}, Y: ${floorPosition.y.toFixed(2)}, Z: ${floorPosition.z.toFixed(2)}</p>
+                                <p><strong>楼层旋转:</strong> ${(floorRotation.y * 180 / Math.PI).toFixed(0)}°</p>
+                                <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
+                            `;
+                        } else {
+                            floorInfoElement.innerHTML = `
+                                <p>未选择楼层</p>
+                                <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
+                            `;
+                        }
+                    }
+                }
+                
+                // 更新楼层信息显示
+                function updateFloorInfo() {
+                    const floorInfoElement = document.getElementById('currentFloorInfo');
+                    if (selectedFloor) {
+                        const floorNumber = selectedFloor.name.replace('floor', '');
+                        const floorPosition = selectedFloor.position;
+                        const floorRotation = selectedFloor.rotation;
+                        const cameraAngle = (camera.alpha * 180 / Math.PI).toFixed(0);
+                        floorInfoElement.innerHTML = `
+                            <p><strong>楼层号:</strong> ${floorNumber}</p>
+                            <p><strong>位置:</strong> X: ${floorPosition.x.toFixed(2)}, Y: ${floorPosition.y.toFixed(2)}, Z: ${floorPosition.z.toFixed(2)}</p>
+                            <p><strong>楼层旋转:</strong> ${(floorRotation.y * 180 / Math.PI).toFixed(0)}°</p>
+                            <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
+                        `;
+                        
+                        // 高亮对应的按钮
+                        document.querySelectorAll('.floor-btn').forEach(btn => {
+                            if (btn.getAttribute('data-floor') === floorNumber) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        });
+                    } else {
+                        floorInfoElement.innerHTML = '未选择楼层';
+                        document.querySelectorAll('.floor-btn').forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                    }
+                }
+                
+                // 添加楼层按钮事件监听
+                const floorButtons = document.querySelectorAll('.floor-btn');
+                floorButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const floorNumber = this.getAttribute('data-floor');
+                        loadFloorModel(floorNumber);
+                    });
+                });
+                
+                // 设置高度控制
+                setupHeightControls();
+                
+                // 设置旋转控制
+                setupRotationControls();
+                
+                return scene;
+            };
+            
+            // 创建场景
+            const scene = createScene();
+            
+            // 运行渲染循环
+            engine.runRenderLoop(function() {
+                scene.render();
+            });
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', function() {
+                engine.resize();
+            });
+        });
+    </script>
+</body>
+</html>
