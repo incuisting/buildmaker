@@ -28,17 +28,41 @@
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
             max-width: 200px;
         }
+        .floor-btn-container {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            width: 100%;
+        }
         .floor-btn {
             display: block;
-            margin: 5px 0;
             padding: 8px 12px;
             background-color: #4CAF50;
             color: white;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            width: 100%;
+            flex-grow: 1;
             text-align: center;
+            width: 80px;
+            min-width: 80px;
+        }
+        .delete-btn {
+            margin-left: 5px;
+            padding: 8px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            width: 40px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .delete-btn:hover {
+            background-color: #d32f2f;
         }
         .floor-btn:hover {
             background-color: #45a049;
@@ -134,14 +158,38 @@
     
     <div id="floorPanel">
         <h3>楼层选择</h3>
-        <button class="floor-btn" data-floor="1">楼层 1</button>
-        <button class="floor-btn" data-floor="2">楼层 2</button>
-        <button class="floor-btn" data-floor="3">楼层 3</button>
-        <button class="floor-btn" data-floor="4">楼层 4</button>
-        <button class="floor-btn" data-floor="5">楼层 5</button>
-        <button class="floor-btn" data-floor="6">楼层 6</button>
-        <button class="floor-btn" data-floor="7">楼层 7</button>
-        <button class="floor-btn" data-floor="8">楼层 8</button>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="1">楼层 1</button>
+            <button class="delete-btn" data-floor="1">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="2">楼层 2</button>
+            <button class="delete-btn" data-floor="2">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="3">楼层 3</button>
+            <button class="delete-btn" data-floor="3">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="4">楼层 4</button>
+            <button class="delete-btn" data-floor="4">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="5">楼层 5</button>
+            <button class="delete-btn" data-floor="5">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="6">楼层 6</button>
+            <button class="delete-btn" data-floor="6">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="7">楼层 7</button>
+            <button class="delete-btn" data-floor="7">删除</button>
+        </div>
+        <div class="floor-btn-container">
+            <button class="floor-btn" data-floor="8">楼层 8</button>
+            <button class="delete-btn" data-floor="8">删除</button>
+        </div>
     </div>
     
     <div id="floorInfo">
@@ -184,14 +232,14 @@
                 scene.clearColor = new BABYLON.Color4(0.75, 0.85, 0.9, 1.0);
                 
                 // 创建相机
-                const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/4, Math.PI/4, 3, new BABYLON.Vector3(0, 0, 0), scene);
+                const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/4, Math.PI*75/180, 3, new BABYLON.Vector3(0, 0, 0), scene);
                 camera.attachControl(canvas, true);
                 camera.lowerRadiusLimit = 0.5;
                 camera.upperRadiusLimit = 10;
                 
                 // 设置相机初始位置
                 camera.alpha = -Math.PI/4;
-                camera.beta = Math.PI/4;
+                camera.beta = Math.PI*75/180;
                 camera.radius = 3;
                 
                 // 设置相机控制按钮
@@ -209,6 +257,12 @@
                 light1.parent = lightParent;
                 light2.parent = lightParent;
                 
+                // 确保光源不随相机旋转
+                scene.onBeforeRenderObservable.add(() => {
+                    // 重置光源容器的旋转，使其不受相机旋转影响
+                    lightParent.rotation.y = -camera.alpha;
+                });
+                
                 // 创建地面
                 const ground = BABYLON.MeshBuilder.CreateGround("ground", {width: 5, height: 5}, scene);
                 const groundMaterial = new BABYLON.StandardMaterial("groundMaterial", scene);
@@ -225,7 +279,7 @@
                 const floorPositions = [];
                 
                 // 基础高度偏移量
-                const baseHeightOffset = 0.03; // 调整为3%的偏移量
+                const baseHeightOffset = 0; // 修改为0，不再使用偏移量
                 
                 // 加载楼层模型
                 function loadFloorModel(floorNumber) {
@@ -273,18 +327,8 @@
                         // 计算缩放后的高度
                         const scaledHeight = originalHeight * 0.01;
                         
-                        // 计算楼层的高度位置
-                        let yPosition = baseHeightOffset; // 添加基础偏移，确保第一层不会嵌入地面
-                        
-                        // 按照楼层编号排序
-                        const sortedPositions = [...floorPositions].sort((a, b) => a.floor - b.floor);
-                        
-                        // 计算当前应该放置的高度
-                        for (let i = 0; i < sortedPositions.length; i++) {
-                            if (parseInt(sortedPositions[i].floor) < parseInt(floorNumber)) {
-                                yPosition += sortedPositions[i].height + baseHeightOffset; // 添加间隔
-                            }
-                        }
+                        // 设置固定的Y轴位置为0
+                        const yPosition = 0;
                         
                         // 设置楼层位置
                         floorParent.position.y = yPosition;
@@ -306,8 +350,46 @@
                         selectedFloor = floorParent;
                         updateFloorInfo();
                         
+                        // 显示对应的删除按钮
+                        const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
+                        if (deleteBtn) {
+                            deleteBtn.style.display = 'block';
+                        }
+                        
                         console.log(`楼层 ${floorNumber} 已加载，高度: ${scaledHeight}, 位置Y: ${yPosition}`);
                     });
+                }
+                
+                // 删除楼层
+                function removeFloor(floorNumber) {
+                    const floor = loadedFloors[floorNumber];
+                    if (!floor) return;
+                    
+                    // 如果当前选中的是要删除的楼层，则取消选中
+                    if (selectedFloor === floor) {
+                        selectedFloor = null;
+                        updateFloorInfo();
+                    }
+                    
+                    // 从场景中移除楼层
+                    floor.dispose();
+                    
+                    // 从已加载楼层中移除
+                    delete loadedFloors[floorNumber];
+                    
+                    // 从楼层位置数组中移除
+                    const index = floorPositions.findIndex(fp => fp.floor === floorNumber);
+                    if (index !== -1) {
+                        floorPositions.splice(index, 1);
+                    }
+                    
+                    // 隐藏对应的删除按钮
+                    const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
+                    if (deleteBtn) {
+                        deleteBtn.style.display = 'none';
+                    }
+                    
+                    console.log(`楼层 ${floorNumber} 已删除`);
                 }
                 
                 // 使楼层可拖动
@@ -320,37 +402,9 @@
                     // 只允许在XZ平面上拖动（保持Y不变）
                     pointerDragBehavior.updateDragPlane = false;
                     
-                    // 添加高亮材质
-                    const highlightMaterial = new BABYLON.StandardMaterial("highlightMaterial", scene);
-                    highlightMaterial.emissiveColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-                    highlightMaterial.alpha = 0.7;
-                    
-                    // 存储原始材质
-                    const originalMaterials = {};
-                    
-                    // 高亮显示函数
-                    const highlightFloor = function() {
-                        floor.getChildMeshes().forEach(mesh => {
-                            if (mesh.material) {
-                                originalMaterials[mesh.id] = mesh.material;
-                                mesh.material = highlightMaterial;
-                            }
-                        });
-                    };
-                    
-                    // 恢复原始材质
-                    const restoreFloorMaterials = function() {
-                        floor.getChildMeshes().forEach(mesh => {
-                            if (originalMaterials[mesh.id]) {
-                                mesh.material = originalMaterials[mesh.id];
-                            }
-                        });
-                    };
-                    
                     // 拖动开始事件
                     pointerDragBehavior.onDragStartObservable.add(() => {
                         selectedFloor = floor;
-                        highlightFloor();
                         updateFloorInfo();
                     });
                     
@@ -359,15 +413,15 @@
                         updateFloorInfo();
                     });
                     
-                    // 拖动结束事件
+                    // 拖动结束事件 - 不再需要恢复材质
                     pointerDragBehavior.onDragEndObservable.add(() => {
-                        restoreFloorMaterials();
+                        // 空函数，保留事件但不执行任何操作
                     });
                     
                     // 将拖动行为添加到楼层
                     floor.addBehavior(pointerDragBehavior);
                     
-                    // 点击选择楼层
+                    // 点击选择楼层 - 移除高亮效果
                     floor.getChildMeshes().forEach(mesh => {
                         mesh.isPickable = true;
                         
@@ -377,13 +431,7 @@
                                 BABYLON.ActionManager.OnPickTrigger,
                                 function() {
                                     selectedFloor = floor;
-                                    highlightFloor();
                                     updateFloorInfo();
-                                    
-                                    // 延迟恢复材质，以便用户能看到高亮效果
-                                    setTimeout(() => {
-                                        restoreFloorMaterials();
-                                    }, 500);
                                 }
                             )
                         );
@@ -406,6 +454,7 @@
                     
                     moveDownBtn.addEventListener('click', function() {
                         if (selectedFloor) {
+                            // 确保Y轴位置不小于0
                             selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
                             updateFloorInfo();
                         }
@@ -431,6 +480,7 @@
                                 updateFloorInfo();
                                 e.preventDefault();
                             } else if (e.key === 'ArrowDown') {
+                                // 确保Y轴位置不小于0
                                 selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
                                 updateFloorInfo();
                                 e.preventDefault();
@@ -503,25 +553,21 @@
                     rotateLeftBtn.addEventListener('click', function() {
                         if (isRotating) return; // 如果正在旋转，则不执行新的旋转
                         
-                        // 计算目标角度
+                        // 计算目标角度，直接减去旋转步长，不进行归一化处理
                         const targetAlpha = camera.alpha - rotationStep;
-                        // 确保角度在 -2π 到 2π 之间
-                        const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
                         
                         // 执行动画旋转
-                        animateRotation(normalizedTargetAlpha);
+                        animateRotation(targetAlpha);
                     });
                     
                     rotateRightBtn.addEventListener('click', function() {
                         if (isRotating) return; // 如果正在旋转，则不执行新的旋转
                         
-                        // 计算目标角度
+                        // 计算目标角度，直接加上旋转步长，不进行归一化处理
                         const targetAlpha = camera.alpha + rotationStep;
-                        // 确保角度在 -2π 到 2π 之间
-                        const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
                         
                         // 执行动画旋转
-                        animateRotation(normalizedTargetAlpha);
+                        animateRotation(targetAlpha);
                     });
                     
                     // 添加键盘控制
@@ -529,22 +575,18 @@
                         if (isRotating) return; // 如果正在旋转，则不执行新的旋转
                         
                         if (e.key === 'ArrowLeft') {
-                            // 计算目标角度
+                            // 计算目标角度，直接减去旋转步长，不进行归一化处理
                             const targetAlpha = camera.alpha - rotationStep;
-                            // 确保角度在 -2π 到 2π 之间
-                            const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
                             
                             // 执行动画旋转
-                            animateRotation(normalizedTargetAlpha);
+                            animateRotation(targetAlpha);
                             e.preventDefault();
                         } else if (e.key === 'ArrowRight') {
-                            // 计算目标角度
+                            // 计算目标角度，直接加上旋转步长，不进行归一化处理
                             const targetAlpha = camera.alpha + rotationStep;
-                            // 确保角度在 -2π 到 2π 之间
-                            const normalizedTargetAlpha = targetAlpha % (2 * Math.PI);
                             
                             // 执行动画旋转
-                            animateRotation(normalizedTargetAlpha);
+                            animateRotation(targetAlpha);
                             e.preventDefault();
                         }
                     });
@@ -552,7 +594,8 @@
                     // 更新相机信息
                     function updateCameraInfo() {
                         const floorInfoElement = document.getElementById('currentFloorInfo');
-                        const cameraAngle = (camera.alpha * 180 / Math.PI).toFixed(0);
+                        // 显示角度时进行归一化，将角度转换为0-360度范围
+                        const cameraAngle = (((camera.alpha % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI).toFixed(0);
                         
                         // 如果有选中的楼层，则同时显示楼层和相机信息
                         if (selectedFloor) {
@@ -581,7 +624,8 @@
                         const floorNumber = selectedFloor.name.replace('floor', '');
                         const floorPosition = selectedFloor.position;
                         const floorRotation = selectedFloor.rotation;
-                        const cameraAngle = (camera.alpha * 180 / Math.PI).toFixed(0);
+                        // 显示角度时进行归一化，将角度转换为0-360度范围
+                        const cameraAngle = (((camera.alpha % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI).toFixed(0);
                         floorInfoElement.innerHTML = `
                             <p><strong>楼层号:</strong> ${floorNumber}</p>
                             <p><strong>位置:</strong> X: ${floorPosition.x.toFixed(2)}, Y: ${floorPosition.y.toFixed(2)}, Z: ${floorPosition.z.toFixed(2)}</p>
@@ -611,6 +655,15 @@
                     button.addEventListener('click', function() {
                         const floorNumber = this.getAttribute('data-floor');
                         loadFloorModel(floorNumber);
+                    });
+                });
+                
+                // 添加删除按钮事件监听
+                const deleteButtons = document.querySelectorAll('.delete-btn');
+                deleteButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const floorNumber = this.getAttribute('data-floor');
+                        removeFloor(floorNumber);
                     });
                 });
                 
