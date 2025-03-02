@@ -61,8 +61,31 @@
             min-width: 40px;
             text-align: center;
         }
+        .lock-btn {
+            margin-left: 5px;
+            padding: 8px;
+            background-color: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            width: 40px;
+            min-width: 40px;
+            text-align: center;
+        }
+        .lock-btn.locked {
+            background-color: #FF9800;
+        }
         .delete-btn:hover {
             background-color: #d32f2f;
+        }
+        .lock-btn:hover {
+            background-color: #0b7dda;
+        }
+        .lock-btn.locked:hover {
+            background-color: #e68a00;
         }
         .floor-btn:hover {
             background-color: #45a049;
@@ -125,28 +148,133 @@
         #resetBtn:hover {
             background-color: #d32f2f;
         }
-        #rotationControls {
+        /* 删除原有的旋转控制面板样式 */
+        /* 新增的摇杆式旋转控制面板样式 */
+        #joystickRotationControl {
             position: absolute;
-            bottom: 100px;
-            right: 20px;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 240px;
+            height: 60px;
             background-color: rgba(255, 255, 255, 0.8);
-            padding: 15px;
+            border-radius: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: none;
+        }
+        #joystickBase {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 30px;
+            background-color: rgba(156, 39, 176, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #joystickHandle {
+            width: 50px;
+            height: 50px;
+            background-color: #9C27B0;
+            border-radius: 50%;
+            position: absolute;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        #joystickLabel {
+            position: absolute;
+            top: -25px;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            padding: 2px 0;
+        }
+        /* 新增的Y轴移动控制面板样式 */
+        #yAxisControl {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 200px;
+            background-color: rgba(255, 255, 255, 0.8);
             border-radius: 5px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
         }
-        .rotation-btn {
-            margin: 5px;
-            padding: 8px 12px;
-            background-color: #9C27B0;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
+        #yAxisSlider {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            cursor: ns-resize;
+        }
+        #yAxisHandle {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            height: 20px;
+            background-color: #2196F3;
+            border-radius: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #yAxisLabel {
             text-align: center;
-            width: 40px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
-        .rotation-btn:hover {
-            background-color: #7B1FA2;
+        /* 新增的缩放控制面板样式 */
+        #zoomControl {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 40px;
+            height: 200px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+        }
+        #zoomSlider {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            cursor: ns-resize;
+        }
+        #zoomHandle {
+            position: absolute;
+            left: 5px;
+            right: 5px;
+            height: 20px;
+            background-color: #FF9800;
+            border-radius: 3px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        #zoomLabel {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 5px;
         }
     </style>
     <!-- 引入 Babylon.js 库 -->
@@ -160,34 +288,42 @@
         <h3>楼层选择</h3>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="1">楼层 1</button>
+            <button class="lock-btn" data-floor="1">锁定</button>
             <button class="delete-btn" data-floor="1">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="2">楼层 2</button>
+            <button class="lock-btn" data-floor="2">锁定</button>
             <button class="delete-btn" data-floor="2">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="3">楼层 3</button>
+            <button class="lock-btn" data-floor="3">锁定</button>
             <button class="delete-btn" data-floor="3">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="4">楼层 4</button>
+            <button class="lock-btn" data-floor="4">锁定</button>
             <button class="delete-btn" data-floor="4">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="5">楼层 5</button>
+            <button class="lock-btn" data-floor="5">锁定</button>
             <button class="delete-btn" data-floor="5">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="6">楼层 6</button>
+            <button class="lock-btn" data-floor="6">锁定</button>
             <button class="delete-btn" data-floor="6">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="7">楼层 7</button>
+            <button class="lock-btn" data-floor="7">锁定</button>
             <button class="delete-btn" data-floor="7">删除</button>
         </div>
         <div class="floor-btn-container">
             <button class="floor-btn" data-floor="8">楼层 8</button>
+            <button class="lock-btn" data-floor="8">锁定</button>
             <button class="delete-btn" data-floor="8">删除</button>
         </div>
     </div>
@@ -204,16 +340,28 @@
         <button id="resetBtn">重置位置</button>
     </div>
     
-    <div id="rotationControls">
-        <h3>场景旋转控制</h3>
-        <div style="display: flex; justify-content: center;">
-            <button class="rotation-btn" id="rotateLeft">←</button>
-            <button class="rotation-btn" id="rotateRight">→</button>
+    <!-- 新增的摇杆式旋转控制面板 -->
+    <div id="joystickRotationControl">
+        <div id="joystickLabel">场景旋转</div>
+        <div id="joystickBase">
+            <div id="joystickHandle"></div>
         </div>
     </div>
-    
-    <div id="instructions">
-        <p>拖动鼠标左键: 移动楼层 | 鼠标右键: 旋转视角 | 鼠标滚轮: 缩放 | 上下键: 调整高度 | 左右键: 旋转整个场景</p>
+
+    <!-- 新增的Y轴移动控制面板 -->
+    <div id="yAxisControl">
+        <div id="yAxisLabel">Y轴</div>
+        <div id="yAxisSlider">
+            <div id="yAxisHandle"></div>
+        </div>
+    </div>
+
+    <!-- 新增的缩放控制面板 -->
+    <div id="zoomControl">
+        <div id="zoomLabel">缩放</div>
+        <div id="zoomSlider">
+            <div id="zoomHandle"></div>
+        </div>
     </div>
 
     <script>
@@ -272,8 +420,11 @@
                 // 存储已加载的楼层
                 const loadedFloors = {};
                 
-                // 当前选中的楼层
-                let selectedFloor = null;
+                // 存储已锁定的楼层
+                const lockedFloors = {};
+                
+                // 当前选中的楼层 - 设置为全局变量
+                window.selectedFloor = null;
                 
                 // 楼层的位置
                 const floorPositions = [];
@@ -286,7 +437,7 @@
                     // 检查该楼层是否已经加载
                     if (loadedFloors[floorNumber]) {
                         console.log(`楼层 ${floorNumber} 已经加载`);
-                        selectedFloor = loadedFloors[floorNumber];
+                        window.selectedFloor = loadedFloors[floorNumber];
                         updateFloorInfo();
                         return;
                     }
@@ -347,13 +498,17 @@
                         makeFloorDraggable(floorParent);
                         
                         // 选中新加载的楼层
-                        selectedFloor = floorParent;
+                        window.selectedFloor = floorParent;
                         updateFloorInfo();
                         
-                        // 显示对应的删除按钮
+                        // 显示对应的删除按钮和锁定按钮
                         const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
+                        const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
                         if (deleteBtn) {
                             deleteBtn.style.display = 'block';
+                        }
+                        if (lockBtn) {
+                            lockBtn.style.display = 'block';
                         }
                         
                         console.log(`楼层 ${floorNumber} 已加载，高度: ${scaledHeight}, 位置Y: ${yPosition}`);
@@ -366,8 +521,8 @@
                     if (!floor) return;
                     
                     // 如果当前选中的是要删除的楼层，则取消选中
-                    if (selectedFloor === floor) {
-                        selectedFloor = null;
+                    if (window.selectedFloor === floor) {
+                        window.selectedFloor = null;
                         updateFloorInfo();
                     }
                     
@@ -377,23 +532,95 @@
                     // 从已加载楼层中移除
                     delete loadedFloors[floorNumber];
                     
+                    // 从已锁定楼层中移除
+                    delete lockedFloors[floorNumber];
+                    
                     // 从楼层位置数组中移除
                     const index = floorPositions.findIndex(fp => fp.floor === floorNumber);
                     if (index !== -1) {
                         floorPositions.splice(index, 1);
                     }
                     
-                    // 隐藏对应的删除按钮
+                    // 隐藏对应的删除按钮和锁定按钮
                     const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
+                    const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
                     if (deleteBtn) {
                         deleteBtn.style.display = 'none';
+                    }
+                    if (lockBtn) {
+                        lockBtn.style.display = 'none';
+                        lockBtn.classList.remove('locked');
+                        lockBtn.textContent = '锁定';
                     }
                     
                     console.log(`楼层 ${floorNumber} 已删除`);
                 }
                 
+                // 锁定/解锁楼层
+                function toggleLockFloor(floorNumber) {
+                    const floor = loadedFloors[floorNumber];
+                    if (!floor) return;
+                    
+                    const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
+                    
+                    if (lockedFloors[floorNumber]) {
+                        // 解锁楼层
+                        delete lockedFloors[floorNumber];
+                        
+                        // 重新添加拖动行为
+                        makeFloorDraggable(floor);
+                        
+                        // 更新锁定按钮样式
+                        if (lockBtn) {
+                            lockBtn.classList.remove('locked');
+                            lockBtn.textContent = '锁定';
+                        }
+                        
+                        console.log(`楼层 ${floorNumber} 已解锁`);
+                    } else {
+                        // 锁定楼层
+                        lockedFloors[floorNumber] = true;
+                        
+                        // 移除拖动行为
+                        const behaviors = floor.behaviors;
+                        if (behaviors && behaviors.length > 0) {
+                            for (let i = 0; i < behaviors.length; i++) {
+                                if (behaviors[i] instanceof BABYLON.PointerDragBehavior) {
+                                    floor.removeBehavior(behaviors[i]);
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 更新锁定按钮样式
+                        if (lockBtn) {
+                            lockBtn.classList.add('locked');
+                            lockBtn.textContent = '解锁';
+                        }
+                        
+                        console.log(`楼层 ${floorNumber} 已锁定`);
+                    }
+                }
+                
                 // 使楼层可拖动
                 function makeFloorDraggable(floor) {
+                    // 检查是否已锁定
+                    const floorNumber = floor.name.replace('floor', '');
+                    if (lockedFloors[floorNumber]) {
+                        return; // 如果已锁定，则不添加拖动行为
+                    }
+                    
+                    // 移除现有的拖动行为（如果有）
+                    const behaviors = floor.behaviors;
+                    if (behaviors && behaviors.length > 0) {
+                        for (let i = 0; i < behaviors.length; i++) {
+                            if (behaviors[i] instanceof BABYLON.PointerDragBehavior) {
+                                floor.removeBehavior(behaviors[i]);
+                                break;
+                            }
+                        }
+                    }
+                    
                     // 使用Babylon内置的拖动行为
                     const pointerDragBehavior = new BABYLON.PointerDragBehavior({
                         dragPlaneNormal: new BABYLON.Vector3(0, 1, 0)
@@ -404,7 +631,7 @@
                     
                     // 拖动开始事件
                     pointerDragBehavior.onDragStartObservable.add(() => {
-                        selectedFloor = floor;
+                        window.selectedFloor = floor;
                         updateFloorInfo();
                     });
                     
@@ -430,7 +657,7 @@
                             new BABYLON.ExecuteCodeAction(
                                 BABYLON.ActionManager.OnPickTrigger,
                                 function() {
-                                    selectedFloor = floor;
+                                    window.selectedFloor = floor;
                                     updateFloorInfo();
                                 }
                             )
@@ -446,27 +673,27 @@
                     const heightStep = 0.03; // 调整为3%的高度步长
                     
                     moveUpBtn.addEventListener('click', function() {
-                        if (selectedFloor) {
-                            selectedFloor.position.y += heightStep;
+                        if (window.selectedFloor) {
+                            window.selectedFloor.position.y += heightStep;
                             updateFloorInfo();
                         }
                     });
                     
                     moveDownBtn.addEventListener('click', function() {
-                        if (selectedFloor) {
+                        if (window.selectedFloor) {
                             // 确保Y轴位置不小于0
-                            selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
+                            window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
                             updateFloorInfo();
                         }
                     });
                     
                     resetBtn.addEventListener('click', function() {
-                        if (selectedFloor) {
-                            const floorNumber = selectedFloor.name.replace('floor', '');
+                        if (window.selectedFloor) {
+                            const floorNumber = window.selectedFloor.name.replace('floor', '');
                             const floorData = floorPositions.find(fp => fp.floor === floorNumber);
                             
                             if (floorData) {
-                                selectedFloor.position = floorData.position.clone();
+                                window.selectedFloor.position = floorData.position.clone();
                                 updateFloorInfo();
                             }
                         }
@@ -474,156 +701,28 @@
                     
                     // 添加键盘控制
                     window.addEventListener('keydown', function(e) {
-                        if (selectedFloor) {
+                        if (window.selectedFloor) {
                             if (e.key === 'ArrowUp') {
-                                selectedFloor.position.y += heightStep;
+                                window.selectedFloor.position.y += heightStep;
                                 updateFloorInfo();
                                 e.preventDefault();
                             } else if (e.key === 'ArrowDown') {
                                 // 确保Y轴位置不小于0
-                                selectedFloor.position.y = Math.max(0, selectedFloor.position.y - heightStep);
+                                window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
                                 updateFloorInfo();
                                 e.preventDefault();
                             }
                         }
                     });
-                }
-                
-                // 添加旋转控制
-                function setupRotationControls() {
-                    const rotateLeftBtn = document.getElementById('rotateLeft');
-                    const rotateRightBtn = document.getElementById('rotateRight');
-                    const rotationStep = Math.PI / 2; // 90度
-                    let isRotating = false; // 是否正在旋转中
-                    
-                    // 动画旋转函数
-                    function animateRotation(targetAlpha) {
-                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
-                        
-                        isRotating = true;
-                        
-                        // 计算当前角度和目标角度
-                        const currentAlpha = camera.alpha;
-                        
-                        // 创建动画
-                        const animation = new BABYLON.Animation(
-                            "cameraRotation",
-                            "alpha",
-                            30, // 帧率
-                            BABYLON.Animation.ANIMATIONTYPE_FLOAT,
-                            BABYLON.Animation.ANIMATIONLOOPMODE_CONSTANT
-                        );
-                        
-                        // 设置关键帧
-                        const keyFrames = [];
-                        keyFrames.push({
-                            frame: 0,
-                            value: currentAlpha
-                        });
-                        keyFrames.push({
-                            frame: 30, // 1秒动画
-                            value: targetAlpha
-                        });
-                        
-                        animation.setKeys(keyFrames);
-                        
-                        // 添加缓动函数，使动画更平滑
-                        const easingFunction = new BABYLON.QuadraticEase();
-                        easingFunction.setEasingMode(BABYLON.EasingFunction.EASINGMODE_EASEINOUT);
-                        animation.setEasingFunction(easingFunction);
-                        
-                        // 停止之前的动画
-                        scene.stopAnimation(camera);
-                        
-                        // 开始新动画
-                        scene.beginDirectAnimation(
-                            camera,
-                            [animation],
-                            0,
-                            30,
-                            false, // 不循环
-                            1, // 速度
-                            function() { // 动画完成回调
-                                isRotating = false;
-                                updateCameraInfo();
-                            }
-                        );
-                    }
-                    
-                    rotateLeftBtn.addEventListener('click', function() {
-                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
-                        
-                        // 计算目标角度，直接减去旋转步长，不进行归一化处理
-                        const targetAlpha = camera.alpha - rotationStep;
-                        
-                        // 执行动画旋转
-                        animateRotation(targetAlpha);
-                    });
-                    
-                    rotateRightBtn.addEventListener('click', function() {
-                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
-                        
-                        // 计算目标角度，直接加上旋转步长，不进行归一化处理
-                        const targetAlpha = camera.alpha + rotationStep;
-                        
-                        // 执行动画旋转
-                        animateRotation(targetAlpha);
-                    });
-                    
-                    // 添加键盘控制
-                    window.addEventListener('keydown', function(e) {
-                        if (isRotating) return; // 如果正在旋转，则不执行新的旋转
-                        
-                        if (e.key === 'ArrowLeft') {
-                            // 计算目标角度，直接减去旋转步长，不进行归一化处理
-                            const targetAlpha = camera.alpha - rotationStep;
-                            
-                            // 执行动画旋转
-                            animateRotation(targetAlpha);
-                            e.preventDefault();
-                        } else if (e.key === 'ArrowRight') {
-                            // 计算目标角度，直接加上旋转步长，不进行归一化处理
-                            const targetAlpha = camera.alpha + rotationStep;
-                            
-                            // 执行动画旋转
-                            animateRotation(targetAlpha);
-                            e.preventDefault();
-                        }
-                    });
-                    
-                    // 更新相机信息
-                    function updateCameraInfo() {
-                        const floorInfoElement = document.getElementById('currentFloorInfo');
-                        // 显示角度时进行归一化，将角度转换为0-360度范围
-                        const cameraAngle = (((camera.alpha % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI).toFixed(0);
-                        
-                        // 如果有选中的楼层，则同时显示楼层和相机信息
-                        if (selectedFloor) {
-                            const floorNumber = selectedFloor.name.replace('floor', '');
-                            const floorPosition = selectedFloor.position;
-                            const floorRotation = selectedFloor.rotation;
-                            floorInfoElement.innerHTML = `
-                                <p><strong>楼层号:</strong> ${floorNumber}</p>
-                                <p><strong>位置:</strong> X: ${floorPosition.x.toFixed(2)}, Y: ${floorPosition.y.toFixed(2)}, Z: ${floorPosition.z.toFixed(2)}</p>
-                                <p><strong>楼层旋转:</strong> ${(floorRotation.y * 180 / Math.PI).toFixed(0)}°</p>
-                                <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
-                            `;
-                        } else {
-                            floorInfoElement.innerHTML = `
-                                <p>未选择楼层</p>
-                                <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
-                            `;
-                        }
-                    }
                 }
                 
                 // 更新楼层信息显示
                 function updateFloorInfo() {
                     const floorInfoElement = document.getElementById('currentFloorInfo');
-                    if (selectedFloor) {
-                        const floorNumber = selectedFloor.name.replace('floor', '');
-                        const floorPosition = selectedFloor.position;
-                        const floorRotation = selectedFloor.rotation;
+                    if (window.selectedFloor) {
+                        const floorNumber = window.selectedFloor.name.replace('floor', '');
+                        const floorPosition = window.selectedFloor.position;
+                        const floorRotation = window.selectedFloor.rotation;
                         // 显示角度时进行归一化，将角度转换为0-360度范围
                         const cameraAngle = (((camera.alpha % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI).toFixed(0);
                         floorInfoElement.innerHTML = `
@@ -667,14 +766,379 @@
                     });
                 });
                 
+                // 添加锁定按钮事件监听
+                const lockButtons = document.querySelectorAll('.lock-btn');
+                lockButtons.forEach(button => {
+                    button.addEventListener('click', function() {
+                        const floorNumber = this.getAttribute('data-floor');
+                        toggleLockFloor(floorNumber);
+                    });
+                });
+                
                 // 设置高度控制
                 setupHeightControls();
                 
-                // 设置旋转控制
-                setupRotationControls();
+                // 设置摇杆式旋转控制
+                setupJoystickRotationControl(camera);
+                
+                // 设置Y轴移动和缩放控制
+                setupTouchControls(camera);
                 
                 return scene;
             };
+            
+            // 设置摇杆式旋转控制
+            function setupJoystickRotationControl(camera) {
+                const joystickControl = document.getElementById('joystickRotationControl');
+                const joystickBase = document.getElementById('joystickBase');
+                const joystickHandle = document.getElementById('joystickHandle');
+                
+                // 摇杆控制变量
+                let isDragging = false;
+                let centerX = 0;
+                let centerY = 0;
+                let maxDistance = 0;
+                let currentRotation = camera.alpha;
+                let startRotation = 0;
+                let isAnimating = false;
+                let continuousRotation = false;
+                let rotationSpeed = 0;
+                let rotationDirection = 0;
+                let lastFrameTime = 0;
+                
+                // 初始化摇杆中心点和最大距离
+                function initJoystick() {
+                    const rect = joystickBase.getBoundingClientRect();
+                    centerX = rect.width / 2;
+                    centerY = rect.height / 2;
+                    maxDistance = rect.width / 2 - joystickHandle.offsetWidth / 2;
+                    
+                    // 将手柄放置在中心位置
+                    updateHandlePosition(centerX, centerY);
+                }
+                
+                // 更新手柄位置的辅助函数
+                function updateHandlePosition(x, y) {
+                    joystickHandle.style.left = `${x}px`;
+                    joystickHandle.style.top = `${y}px`;
+                    joystickHandle.style.transform = 'translate(-50%, -50%)';
+                }
+                
+                // 初始化摇杆
+                initJoystick();
+                window.addEventListener('resize', initJoystick);
+                
+                // 摇杆事件监听
+                joystickBase.addEventListener('mousedown', startDrag);
+                joystickBase.addEventListener('touchstart', startDrag, { passive: false });
+                
+                window.addEventListener('mousemove', moveDrag);
+                window.addEventListener('touchmove', moveDrag, { passive: false });
+                
+                window.addEventListener('mouseup', endDrag);
+                window.addEventListener('touchend', endDrag);
+                
+                // 开始拖动
+                function startDrag(e) {
+                    isDragging = true;
+                    startRotation = camera.alpha;
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                // 拖动中
+                function moveDrag(e) {
+                    if (!isDragging) return;
+                    
+                    // 获取触摸/鼠标位置
+                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                    
+                    // 计算相对于摇杆基座的位置
+                    const rect = joystickBase.getBoundingClientRect();
+                    const relX = clientX - rect.left;
+                    const relY = clientY - rect.top;
+                    
+                    // 计算与中心的距离和角度
+                    const deltaX = relX - centerX;
+                    const deltaY = relY - centerY;
+                    
+                    // 对于长条形摇杆，主要关注水平方向的移动
+                    const distance = Math.min(Math.abs(deltaX), maxDistance);
+                    const direction = Math.sign(deltaX);
+                    
+                    // 计算手柄的新位置 - 只在水平方向移动
+                    const newX = centerX + distance * direction;
+                    const newY = centerY; // 保持垂直位置不变
+                    
+                    // 更新手柄位置
+                    updateHandlePosition(newX, newY);
+                    
+                    // 根据摇杆位置计算旋转角度和速度
+                    const speedFactor = 0.01; // 调整旋转速度因子，从0.05降低到0.01
+                    rotationSpeed = (distance / maxDistance) * speedFactor * Math.PI;
+                    rotationDirection = -direction; // 负方向表示向左旋转
+                    
+                    // 设置连续旋转标志 - 只要摇杆偏离中心就启用连续旋转
+                    if (distance > 0) {
+                        continuousRotation = true;
+                    } else {
+                        continuousRotation = false;
+                    }
+                    
+                    // 更新相机信息显示
+                    updateCameraInfo();
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                // 结束拖动
+                function endDrag() {
+                    if (!isDragging) return;
+                    
+                    isDragging = false;
+                    continuousRotation = false;
+                    rotationSpeed = 0;
+                    
+                    // 动画将手柄返回中心位置
+                    animateHandleToCenter();
+                }
+                
+                // 动画将手柄返回中心位置
+                function animateHandleToCenter() {
+                    if (isAnimating) return;
+                    
+                    isAnimating = true;
+                    
+                    // 获取当前手柄位置
+                    const handleRect = joystickHandle.getBoundingClientRect();
+                    const baseRect = joystickBase.getBoundingClientRect();
+                    const currentX = handleRect.left - baseRect.left + joystickHandle.offsetWidth / 2;
+                    const currentY = handleRect.top - baseRect.top + joystickHandle.offsetHeight / 2;
+                    
+                    // 计算到中心的距离
+                    const deltaX = centerX - currentX;
+                    const deltaY = centerY - currentY;
+                    
+                    // 使用requestAnimationFrame实现平滑动画
+                    const startTime = performance.now();
+                    const duration = 300; // 动画持续时间（毫秒）
+                    
+                    function animate(time) {
+                        const elapsed = time - startTime;
+                        const progress = Math.min(elapsed / duration, 1);
+                        
+                        // 使用缓动函数使动画更平滑
+                        const easeProgress = 1 - Math.pow(1 - progress, 3); // 缓出
+                        
+                        // 计算新位置
+                        const newX = currentX + deltaX * easeProgress;
+                        const newY = currentY + deltaY * easeProgress;
+                        
+                        // 更新手柄位置
+                        updateHandlePosition(newX, newY);
+                        
+                        if (progress < 1) {
+                            requestAnimationFrame(animate);
+                        } else {
+                            isAnimating = false;
+                        }
+                    }
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                // 连续旋转更新函数
+                function updateContinuousRotation(time) {
+                    if (continuousRotation) {
+                        // 计算时间差，确保旋转速度与帧率无关
+                        const deltaTime = lastFrameTime ? (time - lastFrameTime) / 1000 : 0.016;
+                        
+                        // 更新相机旋转 - 旋转速度与摇杆偏移成正比
+                        camera.alpha += rotationDirection * rotationSpeed * deltaTime * 60;
+                        
+                        // 更新相机信息
+                        updateCameraInfo();
+                    }
+                    
+                    lastFrameTime = time;
+                    requestAnimationFrame(updateContinuousRotation);
+                }
+                
+                // 启动连续旋转更新循环
+                requestAnimationFrame(updateContinuousRotation);
+                
+                // 更新相机信息
+                function updateCameraInfo() {
+                    const floorInfoElement = document.getElementById('currentFloorInfo');
+                    // 显示角度时进行归一化，将角度转换为0-360度范围
+                    const cameraAngle = (((camera.alpha % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) * 180 / Math.PI).toFixed(0);
+                    
+                    // 如果有选中的楼层，则同时显示楼层和相机信息
+                    if (window.selectedFloor) {
+                        const floorNumber = window.selectedFloor.name.replace('floor', '');
+                        const floorPosition = window.selectedFloor.position;
+                        const floorRotation = window.selectedFloor.rotation;
+                        floorInfoElement.innerHTML = `
+                            <p><strong>楼层号:</strong> ${floorNumber}</p>
+                            <p><strong>位置:</strong> X: ${floorPosition.x.toFixed(2)}, Y: ${floorPosition.y.toFixed(2)}, Z: ${floorPosition.z.toFixed(2)}</p>
+                            <p><strong>楼层旋转:</strong> ${(floorRotation.y * 180 / Math.PI).toFixed(0)}°</p>
+                            <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
+                        `;
+                    } else {
+                        floorInfoElement.innerHTML = `
+                            <p>未选择楼层</p>
+                            <p><strong>视角旋转:</strong> ${cameraAngle}°</p>
+                        `;
+                    }
+                }
+            }
+            
+            // 设置触摸控制
+            function setupTouchControls(camera) {
+                // Y轴移动控制
+                const yAxisControl = document.getElementById('yAxisControl');
+                const yAxisSlider = document.getElementById('yAxisSlider');
+                const yAxisHandle = document.getElementById('yAxisHandle');
+                
+                // 缩放控制
+                const zoomControl = document.getElementById('zoomControl');
+                const zoomSlider = document.getElementById('zoomSlider');
+                const zoomHandle = document.getElementById('zoomHandle');
+                
+                // Y轴控制变量
+                let isDraggingY = false;
+                let startYPosition = 0;
+                let startTargetY = 0;
+                
+                // 缩放控制变量
+                let isDraggingZoom = false;
+                let startZoomPosition = 0;
+                let startRadius = 0;
+                
+                // Y轴控制事件
+                yAxisSlider.addEventListener('mousedown', startYDrag);
+                yAxisSlider.addEventListener('touchstart', startYDrag, { passive: false });
+                
+                window.addEventListener('mousemove', moveYDrag);
+                window.addEventListener('touchmove', moveYDrag, { passive: false });
+                
+                window.addEventListener('mouseup', endYDrag);
+                window.addEventListener('touchend', endYDrag);
+                
+                // 缩放控制事件
+                zoomSlider.addEventListener('mousedown', startZoomDrag);
+                zoomSlider.addEventListener('touchstart', startZoomDrag, { passive: false });
+                
+                window.addEventListener('mousemove', moveZoomDrag);
+                window.addEventListener('touchmove', moveZoomDrag, { passive: false });
+                
+                window.addEventListener('mouseup', endZoomDrag);
+                window.addEventListener('touchend', endZoomDrag);
+                
+                // Y轴控制函数
+                function startYDrag(e) {
+                    isDraggingY = true;
+                    startYPosition = getYPosition(e);
+                    startTargetY = camera.target.y;
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                function moveYDrag(e) {
+                    if (!isDraggingY) return;
+                    
+                    const currentY = getYPosition(e);
+                    const deltaY = (startYPosition - currentY) / 100; // 调整灵敏度
+                    
+                    // 更新相机目标位置的Y坐标，确保不低于0（地面高度）
+                    camera.target.y = Math.max(0, startTargetY + deltaY);
+                    
+                    // 更新滑块位置
+                    updateYAxisHandlePosition();
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                function endYDrag() {
+                    isDraggingY = false;
+                }
+                
+                // 缩放控制函数
+                function startZoomDrag(e) {
+                    isDraggingZoom = true;
+                    startZoomPosition = getYPosition(e);
+                    startRadius = camera.radius;
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                function moveZoomDrag(e) {
+                    if (!isDraggingZoom) return;
+                    
+                    const currentY = getYPosition(e);
+                    const deltaY = (startZoomPosition - currentY) / 50; // 调整灵敏度
+                    
+                    // 计算新的半径，确保在上下限范围内
+                    const newRadius = Math.max(camera.lowerRadiusLimit, Math.min(camera.upperRadiusLimit, startRadius + deltaY));
+                    camera.radius = newRadius;
+                    
+                    // 更新滑块位置
+                    updateZoomHandlePosition();
+                    
+                    if (e.preventDefault) {
+                        e.preventDefault();
+                    }
+                }
+                
+                function endZoomDrag() {
+                    isDraggingZoom = false;
+                }
+                
+                // 辅助函数：获取Y坐标
+                function getYPosition(e) {
+                    return e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+                }
+                
+                // 更新Y轴滑块位置
+                function updateYAxisHandlePosition() {
+                    // 计算滑块位置百分比（基于相机目标Y值的范围）
+                    // 修改最小Y值为0，确保不低于地面
+                    const minY = 0; // 最小Y值（地面高度）
+                    const maxY = 2;  // 最大Y值
+                    const percent = (camera.target.y - minY) / (maxY - minY);
+                    const sliderHeight = yAxisSlider.clientHeight - yAxisHandle.clientHeight;
+                    const newTop = (1 - percent) * sliderHeight;
+                    
+                    // 更新滑块位置
+                    yAxisHandle.style.top = `${newTop}px`;
+                }
+                
+                // 更新缩放滑块位置
+                function updateZoomHandlePosition() {
+                    // 计算滑块位置百分比（基于相机半径的范围）
+                    const percent = (camera.radius - camera.lowerRadiusLimit) / (camera.upperRadiusLimit - camera.lowerRadiusLimit);
+                    const sliderHeight = zoomSlider.clientHeight - zoomHandle.clientHeight;
+                    const newTop = (1 - percent) * sliderHeight;
+                    
+                    // 更新滑块位置
+                    zoomHandle.style.top = `${newTop}px`;
+                }
+                
+                // 初始化滑块位置
+                updateYAxisHandlePosition();
+                updateZoomHandlePosition();
+            }
             
             // 创建场景
             const scene = createScene();
