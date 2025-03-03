@@ -463,8 +463,8 @@
         }
     </style>
     <!-- 引入 Babylon.js 库 -->
-    <script src="http://ss9oxjz3z.hd-bkt.clouddn.com/babylon.js"></script>
-    <script src="http://ss9oxjz3z.hd-bkt.clouddn.com/babylonjs.loaders.min.js"></script>
+    <script src="babylon.js"></script>
+    <script src="babylonjs.loaders.min.js"></script>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
@@ -699,7 +699,7 @@
                         const floorNumber = button.getAttribute('data-floor');
                         
                         // 加载OBJ模型
-                        BABYLON.SceneLoader.ImportMesh("", "http://ss9oxjz3z.hd-bkt.clouddn.com/build/", `${floorNumber}.obj`, scene, function(meshes) {
+                        BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
                             // 创建一个父节点来包含所有的网格
                             const floorParent = new BABYLON.TransformNode(`floor${floorNumber}`, scene);
                             
