@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Babylon.js 模型盖楼游戏</title>
+    <title>3D</title>
     <style>
         html, body {
             overflow: hidden;
@@ -12,12 +12,19 @@
             margin: 0;
             padding: 0;
             font-family: 'Arial', sans-serif;
-            touch-action: none; /* 禁止浏览器默认的触摸行为 */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            touch-action: manipulation;
         }
         #renderCanvas {
             width: 100%;
             height: 100%;
             touch-action: none;
+            -ms-touch-action: none;
         }
         #floorPanel {
             position: absolute;
@@ -456,8 +463,8 @@
         }
     </style>
     <!-- 引入 Babylon.js 库 -->
-    <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="babylon.js"></script>
+    <script src="babylonjs.loaders.min.js"></script>
 </head>
 <body>
     <canvas id="renderCanvas"></canvas>
@@ -566,7 +573,7 @@
 
     <!-- 保留Y轴和缩放控制面板，因为它们在侧边 -->
     <div id="yAxisControl">
-        <div id="yAxisLabel">Y轴</div>
+        <div id="yAxisLabel">高度</div>
         <div id="yAxisSlider">
             <div id="yAxisHandle"></div>
         </div>
@@ -580,12 +587,23 @@
     </div>
 
     <script>
+        // 禁止双击缩放
+        document.addEventListener('touchstart', function(event) {
+            if (event.touches.length > 1) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+        
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(event) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                event.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+        
         window.addEventListener('DOMContentLoaded', function() {
-            // 禁止双击缩放
-            document.addEventListener('dblclick', function(e) {
-                e.preventDefault();
-            });
-            
             // 获取画布元素
             const canvas = document.getElementById('renderCanvas');
             
@@ -600,7 +618,7 @@
                 scene.clearColor = new BABYLON.Color4(0.75, 0.85, 0.9, 1.0);
                 
                 // 创建相机
-                const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/4, Math.PI*75/180, 3, new BABYLON.Vector3(0, 0, 0), scene);
+                const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI/4, Math.PI*75/180, 10, new BABYLON.Vector3(0, 0.5, 0), scene);
                 camera.attachControl(canvas, true);
                 camera.lowerRadiusLimit = 0.5;
                 camera.upperRadiusLimit = 10;
@@ -608,7 +626,7 @@
                 // 设置相机初始位置
                 camera.alpha = -Math.PI/4;
                 camera.beta = Math.PI*75/180;
-                camera.radius = 3;
+                camera.radius = 10;
                 
                 // 设置相机控制按钮
                 camera.inputs.attached.pointers.buttons = [2]; // 只允许右键控制相机，左键用于拖动
@@ -652,84 +670,154 @@
                 // 基础高度偏移量
                 const baseHeightOffset = 0; // 修改为0，不再使用偏移量
                 
-                // 加载楼层模型
-                function loadFloorModel(floorNumber) {
+                // 预加载所有楼层模型
+                function preloadAllFloors() {
+                    // 获取所有楼层按钮
+                    const floorButtons = document.querySelectorAll('.floor-btn');
+                    const totalFloors = floorButtons.length;
+                    let loadedCount = 0;
+                    
+                    console.log(`开始预加载 ${totalFloors} 个楼层...`);
+                    
+                    // 创建加载状态提示
+                    const loadingStatus = document.createElement('div');
+                    loadingStatus.style.position = 'absolute';
+                    loadingStatus.style.top = '50%';
+                    loadingStatus.style.left = '50%';
+                    loadingStatus.style.transform = 'translate(-50%, -50%)';
+                    loadingStatus.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                    loadingStatus.style.color = 'white';
+                    loadingStatus.style.padding = '20px';
+                    loadingStatus.style.borderRadius = '10px';
+                    loadingStatus.style.zIndex = '1000';
+                    loadingStatus.style.textAlign = 'center';
+                    loadingStatus.innerHTML = '正在加载楼层模型...<br>0%';
+                    document.body.appendChild(loadingStatus);
+                    
+                    // 遍历所有楼层按钮，获取楼层编号并加载
+                    floorButtons.forEach(button => {
+                        const floorNumber = button.getAttribute('data-floor');
+                        
+                        // 加载OBJ模型
+                        BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
+                            // 创建一个父节点来包含所有的网格
+                            const floorParent = new BABYLON.TransformNode(`floor${floorNumber}`, scene);
+                            
+                            // 将所有网格添加到父节点
+                            meshes.forEach(mesh => {
+                                if (mesh.id !== "__root__") {
+                                    mesh.parent = floorParent;
+                                }
+                            });
+                            
+                            // 获取原始边界框（缩放前）
+                            let minY = Infinity;
+                            let maxY = -Infinity;
+                            
+                            meshes.forEach(mesh => {
+                                if (mesh.id !== "__root__") {
+                                    const boundingInfo = mesh.getBoundingInfo();
+                                    minY = Math.min(minY, boundingInfo.boundingBox.minimumWorld.y);
+                                    maxY = Math.max(maxY, boundingInfo.boundingBox.maximumWorld.y);
+                                }
+                            });
+                            
+                            const originalHeight = maxY - minY;
+                            
+                            // 将模型缩小到原来的3%
+                            floorParent.scaling = new BABYLON.Vector3(0.01, 0.01, 0.01);
+                            
+                            // 计算缩放后的高度
+                            const scaledHeight = originalHeight * 0.01;
+                            
+                            // 设置固定的Y轴位置为0
+                            const yPosition = 0;
+                            
+                            // 设置楼层位置
+                            floorParent.position.y = yPosition;
+                            
+                            // 记录楼层位置和高度
+                            floorPositions.push({
+                                floor: floorNumber,
+                                position: floorParent.position.clone(),
+                                height: scaledHeight
+                            });
+                            
+                            // 存储已加载的楼层
+                            loadedFloors[floorNumber] = floorParent;
+                            
+                            // 设置为可拖动
+                            makeFloorDraggable(floorParent);
+                            
+                            // 默认隐藏所有楼层
+                            floorParent.setEnabled(false);
+                            
+                            // 不显示删除和锁定按钮，等待用户点击添加楼层时再显示
+                            
+                            // 更新加载计数和状态
+                            loadedCount++;
+                            const percentage = Math.round((loadedCount / totalFloors) * 100);
+                            loadingStatus.innerHTML = `正在加载楼层模型...<br>${percentage}%`;
+                            
+                            console.log(`楼层 ${floorNumber} 已加载，进度: ${percentage}%`);
+                            
+                            // 检查是否所有楼层都已加载
+                            if (loadedCount === totalFloors) {
+                                console.log('所有楼层加载完成');
+                                // 移除加载状态提示
+                                setTimeout(() => {
+                                    document.body.removeChild(loadingStatus);
+                                }, 500);
+                            }
+                        });
+                    });
+                }
+                
+                // 添加楼层到场景
+                function addFloorToScene(floorNumber) {
                     // 检查该楼层是否已经加载
-                    if (loadedFloors[floorNumber]) {
-                        console.log(`楼层 ${floorNumber} 已经加载`);
-                        window.selectedFloor = loadedFloors[floorNumber];
+                    if (!loadedFloors[floorNumber]) {
+                        console.log(`楼层 ${floorNumber} 未加载`);
                         return;
                     }
                     
-                    // 显示加载状态
-                    console.log(`正在加载楼层 ${floorNumber}...`);
+                    // 显示楼层
+                    loadedFloors[floorNumber].setEnabled(true);
                     
-                    // 加载OBJ模型
-                    BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
-                        // 创建一个父节点来包含所有的网格
-                        const floorParent = new BABYLON.TransformNode(`floor${floorNumber}`, scene);
-                        
-                        // 将所有网格添加到父节点
-                        meshes.forEach(mesh => {
-                            if (mesh.id !== "__root__") {
-                                mesh.parent = floorParent;
-                            }
-                        });
-                        
-                        // 获取原始边界框（缩放前）
-                        let minY = Infinity;
-                        let maxY = -Infinity;
-                        
-                        meshes.forEach(mesh => {
-                            if (mesh.id !== "__root__") {
-                                const boundingInfo = mesh.getBoundingInfo();
-                                minY = Math.min(minY, boundingInfo.boundingBox.minimumWorld.y);
-                                maxY = Math.max(maxY, boundingInfo.boundingBox.maximumWorld.y);
-                            }
-                        });
-                        
-                        const originalHeight = maxY - minY;
-                        
-                        // 将模型缩小到原来的3%
-                        floorParent.scaling = new BABYLON.Vector3(0.01, 0.01, 0.01);
-                        
-                        // 计算缩放后的高度
-                        const scaledHeight = originalHeight * 0.01;
-                        
-                        // 设置固定的Y轴位置为0
-                        const yPosition = 0;
-                        
-                        // 设置楼层位置
-                        floorParent.position.y = yPosition;
-                        
-                        // 记录楼层位置和高度
-                        floorPositions.push({
-                            floor: floorNumber,
-                            position: floorParent.position.clone(),
-                            height: scaledHeight
-                        });
-                        
-                        // 存储已加载的楼层
-                        loadedFloors[floorNumber] = floorParent;
-                        
-                        // 设置为可拖动
-                        makeFloorDraggable(floorParent);
-                        
-                        // 选中新加载的楼层
-                        window.selectedFloor = floorParent;
-                        
-                        // 显示对应的删除按钮和锁定按钮
-                        const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
-                        const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
-                        if (deleteBtn) {
-                            deleteBtn.style.display = 'block';
-                        }
-                        if (lockBtn) {
-                            lockBtn.style.display = 'block';
-                        }
-                        
-                        console.log(`楼层 ${floorNumber} 已加载，高度: ${scaledHeight}, 位置Y: ${yPosition}`);
-                    });
+                    // 设置为当前选中的楼层
+                    window.selectedFloor = loadedFloors[floorNumber];
+                    
+                    // 显示对应的删除按钮和锁定按钮
+                    const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
+                    const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
+                    if (deleteBtn) {
+                        deleteBtn.style.display = 'block';
+                    }
+                    if (lockBtn) {
+                        lockBtn.style.display = 'block';
+                    }
+                    
+                    console.log(`楼层 ${floorNumber} 已添加到场景`);
+                }
+                
+                // 显示指定楼层（选中楼层）
+                function selectFloor(floorNumber) {
+                    // 检查该楼层是否已经加载
+                    if (!loadedFloors[floorNumber]) {
+                        console.log(`楼层 ${floorNumber} 未加载`);
+                        return;
+                    }
+                    
+                    // 检查楼层是否已启用
+                    if (!loadedFloors[floorNumber].isEnabled()) {
+                        // 如果楼层未启用，则添加到场景
+                        addFloorToScene(floorNumber);
+                    } else {
+                        // 如果楼层已启用，则只选中它
+                        window.selectedFloor = loadedFloors[floorNumber];
+                    }
+                    
+                    console.log(`选中楼层 ${floorNumber}`);
                 }
                 
                 // 删除楼层
@@ -837,27 +925,44 @@
                         }
                     }
                     
-                    // 使用Babylon内置的拖动行为
+                    // 使用Babylon内置的拖动行为 - 移除dragPlaneNormal参数，允许在所有方向拖动
                     const pointerDragBehavior = new BABYLON.PointerDragBehavior({
-                        dragPlaneNormal: new BABYLON.Vector3(0, 1, 0)
+                        // 不再限制在水平面上
                     });
                     
-                    // 只允许在XZ平面上拖动（保持Y不变）
-                    pointerDragBehavior.updateDragPlane = false;
+                    // 允许在所有方向拖动，包括Y轴
+                    pointerDragBehavior.updateDragPlane = true;
+                    
+                    // 记录上一次有效的位置
+                    let lastValidPosition = floor.position.clone();
                     
                     // 拖动开始事件
                     pointerDragBehavior.onDragStartObservable.add(() => {
                         window.selectedFloor = floor;
+                        // 记录开始拖动时的有效位置
+                        lastValidPosition = floor.position.clone();
                     });
                     
                     // 拖动事件
                     pointerDragBehavior.onDragObservable.add(() => {
-                        // 移除更新楼层信息的调用
+                        // 检查Y轴位置是否小于0
+                        if (floor.position.y < 0) {
+                            // 如果低于地面，则将Y轴位置设置为0，保持XZ位置不变
+                            floor.position.y = 0;
+                            // 更新最后有效位置
+                            lastValidPosition = floor.position.clone();
+                        } else {
+                            // 如果位置有效，更新最后有效位置
+                            lastValidPosition = floor.position.clone();
+                        }
                     });
                     
-                    // 拖动结束事件 - 不再需要恢复材质
+                    // 拖动结束事件
                     pointerDragBehavior.onDragEndObservable.add(() => {
-                        // 空函数，保留事件但不执行任何操作
+                        // 最终检查确保不低于地面
+                        if (floor.position.y < 0) {
+                            floor.position.y = 0;
+                        }
                     });
                     
                     // 将拖动行为添加到楼层
@@ -892,235 +997,68 @@
                     const heightStep = 0.03; // 高度步长
                     const moveStep = 0.05; // 水平移动步长
                     
-                    // 长按控制变量
-                    let moveUpInterval = null;
-                    let moveDownInterval = null;
-                    let moveForwardInterval = null;
-                    let moveBackwardInterval = null;
-                    let moveLeftInterval = null;
-                    let moveRightInterval = null;
-                    const longPressDelay = 200; // 长按延迟时间（毫秒）
-                    const moveInterval = 50; // 移动间隔时间（毫秒）
-                    
                     // 上下移动控制
-                    moveUpBtn.addEventListener('mousedown', function() {
+                    moveUpBtn.addEventListener('click', function() {
                         if (window.selectedFloor) {
                             window.selectedFloor.position.y += heightStep;
-                            
-                            // 设置长按定时器
-                            moveUpInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.y += heightStep;
-                                }
-                            }, moveInterval);
                         }
                     });
                     
-                    moveUpBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            window.selectedFloor.position.y += heightStep;
-                            
-                            // 设置长按定时器
-                            moveUpInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.y += heightStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveDownBtn.addEventListener('mousedown', function() {
+                    moveDownBtn.addEventListener('click', function() {
                         if (window.selectedFloor) {
                             // 确保Y轴位置不小于0
                             window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
-                            
-                            // 设置长按定时器
-                            moveDownInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
-                                }
-                            }, moveInterval);
                         }
                     });
                     
-                    moveDownBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            // 确保Y轴位置不小于0
-                            window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
-                            
-                            // 设置长按定时器
-                            moveDownInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.y = Math.max(0, window.selectedFloor.position.y - heightStep);
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    // 前后左右移动控制
-                    moveForwardBtn.addEventListener('mousedown', function() {
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算前进方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x += Math.sin(angle) * moveStep;
-                            window.selectedFloor.position.z += Math.cos(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveForwardInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x += Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.cos(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveForwardBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算前进方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x += Math.sin(angle) * moveStep;
-                            window.selectedFloor.position.z += Math.cos(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveForwardInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x += Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.cos(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveBackwardBtn.addEventListener('mousedown', function() {
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算后退方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x -= Math.sin(angle) * moveStep;
-                            window.selectedFloor.position.z -= Math.cos(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveBackwardInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x -= Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.cos(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveBackwardBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算后退方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x -= Math.sin(angle) * moveStep;
-                            window.selectedFloor.position.z -= Math.cos(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveBackwardInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x -= Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.cos(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveLeftBtn.addEventListener('mousedown', function() {
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算左移方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x -= Math.cos(angle) * moveStep;
-                            window.selectedFloor.position.z += Math.sin(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveLeftInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x -= Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.sin(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveLeftBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算左移方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x -= Math.cos(angle) * moveStep;
-                            window.selectedFloor.position.z += Math.sin(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveLeftInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x -= Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.sin(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveRightBtn.addEventListener('mousedown', function() {
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算右移方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x += Math.cos(angle) * moveStep;
-                            window.selectedFloor.position.z -= Math.sin(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveRightInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x += Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.sin(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    moveRightBtn.addEventListener('touchstart', function(e) {
-                        e.preventDefault(); // 阻止默认行为
-                        if (window.selectedFloor) {
-                            // 根据相机角度计算右移方向
-                            const angle = camera.alpha;
-                            window.selectedFloor.position.x += Math.cos(angle) * moveStep;
-                            window.selectedFloor.position.z -= Math.sin(angle) * moveStep;
-                            
-                            // 设置长按定时器
-                            moveRightInterval = setInterval(function() {
-                                if (window.selectedFloor) {
-                                    window.selectedFloor.position.x += Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.sin(angle) * moveStep;
-                                }
-                            }, moveInterval);
-                        }
-                    });
-                    
-                    // 清除所有定时器的函数
-                    function clearAllIntervals() {
-                        if (moveUpInterval) clearInterval(moveUpInterval);
-                        if (moveDownInterval) clearInterval(moveDownInterval);
-                        if (moveForwardInterval) clearInterval(moveForwardInterval);
-                        if (moveBackwardInterval) clearInterval(moveBackwardInterval);
-                        if (moveLeftInterval) clearInterval(moveLeftInterval);
-                        if (moveRightInterval) clearInterval(moveRightInterval);
+                    // 获取相机视角下的方向向量
+                    function getCameraDirectionVectors(camera) {
+                        // 获取相机前方向量（z轴负方向）
+                        const forward = new BABYLON.Vector3(0, 0, 1);
+                        const forwardWorld = BABYLON.Vector3.TransformNormal(forward, camera.getWorldMatrix());
+                        forwardWorld.y = 0; // 保持在水平面上移动
+                        forwardWorld.normalize();
                         
-                        moveUpInterval = null;
-                        moveDownInterval = null;
-                        moveForwardInterval = null;
-                        moveBackwardInterval = null;
-                        moveLeftInterval = null;
-                        moveRightInterval = null;
+                        // 获取相机右方向量（x轴正方向）
+                        const right = new BABYLON.Vector3(1, 0, 0);
+                        const rightWorld = BABYLON.Vector3.TransformNormal(right, camera.getWorldMatrix());
+                        rightWorld.y = 0; // 保持在水平面上移动
+                        rightWorld.normalize();
+                        
+                        return {
+                            forward: forwardWorld,
+                            right: rightWorld
+                        };
                     }
                     
-                    // 添加鼠标抬起和触摸结束事件监听器
-                    document.addEventListener('mouseup', clearAllIntervals);
-                    document.addEventListener('touchend', clearAllIntervals);
-                    document.addEventListener('touchcancel', clearAllIntervals);
+                    // 前后左右移动控制 - 基于相机视角
+                    moveForwardBtn.addEventListener('click', function() {
+                        if (window.selectedFloor) {
+                            const directions = getCameraDirectionVectors(camera);
+                            window.selectedFloor.position.addInPlace(directions.forward.scale(moveStep));
+                        }
+                    });
+                    
+                    moveBackwardBtn.addEventListener('click', function() {
+                        if (window.selectedFloor) {
+                            const directions = getCameraDirectionVectors(camera);
+                            window.selectedFloor.position.subtractInPlace(directions.forward.scale(moveStep));
+                        }
+                    });
+                    
+                    moveLeftBtn.addEventListener('click', function() {
+                        if (window.selectedFloor) {
+                            const directions = getCameraDirectionVectors(camera);
+                            window.selectedFloor.position.subtractInPlace(directions.right.scale(moveStep));
+                        }
+                    });
+                    
+                    moveRightBtn.addEventListener('click', function() {
+                        if (window.selectedFloor) {
+                            const directions = getCameraDirectionVectors(camera);
+                            window.selectedFloor.position.addInPlace(directions.right.scale(moveStep));
+                        }
+                    });
                     
                     resetBtn.addEventListener('click', function() {
                         if (window.selectedFloor) {
@@ -1133,10 +1071,10 @@
                         }
                     });
                     
-                    // 添加键盘控制
+                    // 添加键盘控制 - 同样基于相机视角
                     window.addEventListener('keydown', function(e) {
                         if (window.selectedFloor) {
-                            const angle = camera.alpha;
+                            const directions = getCameraDirectionVectors(camera);
                             
                             switch(e.key) {
                                 case 'ArrowUp':
@@ -1148,23 +1086,19 @@
                                     e.preventDefault();
                                     break;
                                 case 'w': // 前进
-                                    window.selectedFloor.position.x += Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.cos(angle) * moveStep;
+                                    window.selectedFloor.position.addInPlace(directions.forward.scale(moveStep));
                                     e.preventDefault();
                                     break;
                                 case 's': // 后退
-                                    window.selectedFloor.position.x -= Math.sin(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.cos(angle) * moveStep;
+                                    window.selectedFloor.position.subtractInPlace(directions.forward.scale(moveStep));
                                     e.preventDefault();
                                     break;
                                 case 'a': // 左移
-                                    window.selectedFloor.position.x -= Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z += Math.sin(angle) * moveStep;
+                                    window.selectedFloor.position.subtractInPlace(directions.right.scale(moveStep));
                                     e.preventDefault();
                                     break;
                                 case 'd': // 右移
-                                    window.selectedFloor.position.x += Math.cos(angle) * moveStep;
-                                    window.selectedFloor.position.z -= Math.sin(angle) * moveStep;
+                                    window.selectedFloor.position.addInPlace(directions.right.scale(moveStep));
                                     e.preventDefault();
                                     break;
                             }
@@ -1177,7 +1111,15 @@
                 floorButtons.forEach(button => {
                     button.addEventListener('click', function() {
                         const floorNumber = this.getAttribute('data-floor');
-                        loadFloorModel(floorNumber);
+                        selectFloor(floorNumber);
+                        
+                        // 移除其他按钮的active类
+                        floorButtons.forEach(btn => {
+                            btn.classList.remove('active');
+                        });
+                        
+                        // 添加active类到当前按钮
+                        this.classList.add('active');
                     });
                 });
                 
@@ -1207,6 +1149,9 @@
                 
                 // 设置Y轴移动和缩放控制
                 setupTouchControls(camera);
+                
+                // 预加载所有楼层
+                preloadAllFloors();
                 
                 return scene;
             };
@@ -1587,7 +1532,19 @@
                 }
                 
                 // 初始化滑块位置
-                updateYAxisHandlePosition();
+                // 确保Y轴滑块初始位置与相机目标Y轴位置(0.5)同步
+                function initYAxisHandlePosition() {
+                    const minY = 0;
+                    const maxY = 2;
+                    const initialY = 0.5; // 与相机初始Y轴位置同步
+                    const percent = (initialY - minY) / (maxY - minY);
+                    const sliderHeight = yAxisSlider.clientHeight - yAxisHandle.clientHeight;
+                    const newTop = (1 - percent) * sliderHeight;
+                    yAxisHandle.style.top = `${newTop}px`;
+                }
+                
+                // 先设置初始位置，然后再添加更新函数
+                initYAxisHandlePosition();
                 updateZoomHandlePosition();
             }
             
