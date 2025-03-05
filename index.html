@@ -733,8 +733,8 @@
                             // 设置固定的Y轴位置为0
                             const yPosition = 0;
                             
-                            // 设置楼层位置
-                            floorParent.position.y = yPosition;
+                            // 设置楼层位置 - 修改为地面外部的位置
+                            floorParent.position = new BABYLON.Vector3(2.5, yPosition, 2.5); // 设置在地面边缘外
                             
                             // 记录楼层位置和高度
                             floorPositions.push({
@@ -830,20 +830,11 @@
                         window.selectedFloor = null;
                     }
                     
-                    // 从场景中移除楼层
-                    floor.dispose();
-                    
-                    // 从已加载楼层中移除
-                    delete loadedFloors[floorNumber];
+                    // 从场景中隐藏楼层，而不是完全销毁
+                    floor.setEnabled(false);
                     
                     // 从已锁定楼层中移除
                     delete lockedFloors[floorNumber];
-                    
-                    // 从楼层位置数组中移除
-                    const index = floorPositions.findIndex(fp => fp.floor === floorNumber);
-                    if (index !== -1) {
-                        floorPositions.splice(index, 1);
-                    }
                     
                     // 隐藏对应的删除按钮和锁定按钮
                     const deleteBtn = document.querySelector(`.delete-btn[data-floor="${floorNumber}"]`);
