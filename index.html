@@ -481,63 +481,8 @@
     <div id="unifiedControlPanel">
         <div class="panel-section">
             <h3>楼层选择</h3>
-            <div class="floor-buttons-row">
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="1">楼层 1</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="1">锁定</button>
-                        <button class="delete-btn" data-floor="1">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="2">楼层 2</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="2">锁定</button>
-                        <button class="delete-btn" data-floor="2">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="3">楼层 3</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="3">锁定</button>
-                        <button class="delete-btn" data-floor="3">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="4">楼层 4</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="4">锁定</button>
-                        <button class="delete-btn" data-floor="4">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="5">楼层 5</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="5">锁定</button>
-                        <button class="delete-btn" data-floor="5">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="6">楼层 6</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="6">锁定</button>
-                        <button class="delete-btn" data-floor="6">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="7">楼层 7</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="7">锁定</button>
-                        <button class="delete-btn" data-floor="7">删除</button>
-                    </div>
-                </div>
-                <div class="floor-btn-container">
-                    <button class="floor-btn" data-floor="8">楼层 8</button>
-                    <div class="floor-btn-actions">
-                        <button class="lock-btn" data-floor="8">锁定</button>
-                        <button class="delete-btn" data-floor="8">删除</button>
-                    </div>
-                </div>
+            <div class="floor-buttons-row" id="floorButtonsContainer">
+                <!-- 楼层按钮将在JavaScript中动态生成 -->
             </div>
         </div>
         
@@ -670,11 +615,144 @@
                 // 基础高度偏移量
                 const baseHeightOffset = 0; // 修改为0，不再使用偏移量
                 
+                // 动态获取楼层模型文件列表
+                function getFloorModelFiles() {
+                    return new Promise((resolve, reject) => {
+                        // 创建加载状态提示
+                        const loadingStatus = document.createElement('div');
+                        loadingStatus.style.position = 'absolute';
+                        loadingStatus.style.top = '50%';
+                        loadingStatus.style.left = '50%';
+                        loadingStatus.style.transform = 'translate(-50%, -50%)';
+                        loadingStatus.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                        loadingStatus.style.color = 'white';
+                        loadingStatus.style.padding = '20px';
+                        loadingStatus.style.borderRadius = '10px';
+                        loadingStatus.style.zIndex = '1000';
+                        loadingStatus.style.textAlign = 'center';
+                        loadingStatus.innerHTML = '正在扫描楼层模型文件...';
+                        document.body.appendChild(loadingStatus);
+                        
+                        // 使用XMLHttpRequest获取build目录下的文件列表
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('GET', 'build/', true);
+                        xhr.onreadystatechange = function() {
+                            if (xhr.readyState === 4) {
+                                if (xhr.status === 200) {
+                                    // 解析返回的HTML内容，提取.obj文件
+                                    const parser = new DOMParser();
+                                    const htmlDoc = parser.parseFromString(xhr.responseText, 'text/html');
+                                    const links = htmlDoc.querySelectorAll('a');
+                                    const objFiles = [];
+                                    
+                                    links.forEach(link => {
+                                        const href = link.getAttribute('href');
+                                        if (href && href.endsWith('.obj')) {
+                                            // 提取楼层编号（文件名去掉.obj后缀）
+                                            const fileName = href.split('/').pop();
+                                            const floorNumber = fileName.replace('.obj', '');
+                                            objFiles.push(floorNumber);
+                                        }
+                                    });
+                                    
+                                    // 按楼层编号排序
+                                    objFiles.sort((a, b) => parseInt(a) - parseInt(b));
+                                    
+                                    document.body.removeChild(loadingStatus);
+                                    resolve(objFiles);
+                                } else {
+                                    // 如果无法获取文件列表，使用默认的1-8楼层
+                                    console.error('无法获取楼层模型文件列表，使用默认值');
+                                    document.body.removeChild(loadingStatus);
+                                    resolve(['1', '2', '3', '4', '5', '6', '7', '8']);
+                                }
+                            }
+                        };
+                        xhr.onerror = function() {
+                            console.error('获取楼层模型文件列表时发生错误，使用默认值');
+                            document.body.removeChild(loadingStatus);
+                            resolve(['1', '2', '3', '4', '5', '6', '7', '8']);
+                        };
+                        xhr.send();
+                    });
+                }
+                
+                // 动态创建楼层按钮
+                function createFloorButtons(floorNumbers) {
+                    const floorButtonsContainer = document.getElementById('floorButtonsContainer');
+                    floorButtonsContainer.innerHTML = ''; // 清空容器
+                    
+                    floorNumbers.forEach(floorNumber => {
+                        // 创建楼层按钮容器
+                        const btnContainer = document.createElement('div');
+                        btnContainer.className = 'floor-btn-container';
+                        
+                        // 创建楼层按钮
+                        const floorBtn = document.createElement('button');
+                        floorBtn.className = 'floor-btn';
+                        floorBtn.setAttribute('data-floor', floorNumber);
+                        floorBtn.textContent = `楼层 ${floorNumber}`;
+                        
+                        // 创建按钮操作容器
+                        const btnActions = document.createElement('div');
+                        btnActions.className = 'floor-btn-actions';
+                        
+                        // 创建锁定按钮
+                        const lockBtn = document.createElement('button');
+                        lockBtn.className = 'lock-btn';
+                        lockBtn.setAttribute('data-floor', floorNumber);
+                        lockBtn.textContent = '锁定';
+                        
+                        // 创建删除按钮
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.setAttribute('data-floor', floorNumber);
+                        deleteBtn.textContent = '删除';
+                        
+                        // 添加按钮到容器
+                        btnActions.appendChild(lockBtn);
+                        btnActions.appendChild(deleteBtn);
+                        btnContainer.appendChild(floorBtn);
+                        btnContainer.appendChild(btnActions);
+                        floorButtonsContainer.appendChild(btnContainer);
+                        
+                        // 添加楼层按钮点击事件
+                        floorBtn.addEventListener('click', function() {
+                            const floorNum = this.getAttribute('data-floor');
+                            selectFloor(floorNum);
+                            
+                            // 移除其他按钮的active类
+                            document.querySelectorAll('.floor-btn').forEach(btn => {
+                                btn.classList.remove('active');
+                            });
+                            
+                            // 添加active类到当前按钮
+                            this.classList.add('active');
+                        });
+                        
+                        // 添加删除按钮点击事件
+                        deleteBtn.addEventListener('click', function() {
+                            const floorNum = this.getAttribute('data-floor');
+                            removeFloor(floorNum);
+                        });
+                        
+                        // 添加锁定按钮点击事件
+                        lockBtn.addEventListener('click', function() {
+                            const floorNum = this.getAttribute('data-floor');
+                            toggleLockFloor(floorNum);
+                        });
+                    });
+                }
+                
                 // 预加载所有楼层模型
-                function preloadAllFloors() {
-                    // 获取所有楼层按钮
-                    const floorButtons = document.querySelectorAll('.floor-btn');
-                    const totalFloors = floorButtons.length;
+                async function preloadAllFloors() {
+                    // 获取楼层模型文件列表
+                    const floorNumbers = await getFloorModelFiles();
+                    
+                    // 创建楼层按钮
+                    createFloorButtons(floorNumbers);
+                    
+                    const totalFloors = floorNumbers.length;
                     let loadedCount = 0;
                     
                     console.log(`开始预加载 ${totalFloors} 个楼层...`);
@@ -694,10 +772,8 @@
                     loadingStatus.innerHTML = '正在加载楼层模型...<br>0%';
                     document.body.appendChild(loadingStatus);
                     
-                    // 遍历所有楼层按钮，获取楼层编号并加载
-                    floorButtons.forEach(button => {
-                        const floorNumber = button.getAttribute('data-floor');
-                        
+                    // 遍历所有楼层编号并加载
+                    floorNumbers.forEach(floorNumber => {
                         // 加载OBJ模型
                         BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
                             // 创建一个父节点来包含所有的网格
@@ -1096,41 +1172,6 @@
                         }
                     });
                 }
-                
-                // 添加楼层按钮事件监听
-                const floorButtons = document.querySelectorAll('.floor-btn');
-                floorButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        const floorNumber = this.getAttribute('data-floor');
-                        selectFloor(floorNumber);
-                        
-                        // 移除其他按钮的active类
-                        floorButtons.forEach(btn => {
-                            btn.classList.remove('active');
-                        });
-                        
-                        // 添加active类到当前按钮
-                        this.classList.add('active');
-                    });
-                });
-                
-                // 添加删除按钮事件监听
-                const deleteButtons = document.querySelectorAll('.delete-btn');
-                deleteButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        const floorNumber = this.getAttribute('data-floor');
-                        removeFloor(floorNumber);
-                    });
-                });
-                
-                // 添加锁定按钮事件监听
-                const lockButtons = document.querySelectorAll('.lock-btn');
-                lockButtons.forEach(button => {
-                    button.addEventListener('click', function() {
-                        const floorNumber = this.getAttribute('data-floor');
-                        toggleLockFloor(floorNumber);
-                    });
-                });
                 
                 // 设置高度控制
                 setupHeightControls();
