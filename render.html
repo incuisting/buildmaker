@@ -634,6 +634,17 @@
         #backButton:active, #previewButton:active {
             transform: scale(0.95);
         }
+
+        /* 预览模式样式 */
+        body.preview-mode #unifiedControlPanel,
+        body.preview-mode #yAxisControl,
+        body.preview-mode #zoomControl {
+            display: none;
+        }
+        
+        body.preview-mode #previewButton {
+            background-color: #FF9500;
+        }
     </style>
     <!-- 引入 Babylon.js 库 -->
     <script src="babylon.js"></script>
@@ -766,7 +777,177 @@
                 backButton.addEventListener('click', function() {
                     window.history.back();
                 });
+                
+                // 预览按钮点击事件
+                const previewButton = document.getElementById('previewButton');
+                previewButton.addEventListener('click', function() {
+                    togglePreviewMode();
+                });
             };
+            
+            // 预览模式切换
+            let isPreviewMode = false;
+            let originalCameraControls = {};
+            let originalLockedFloors = {}; // 保存原始锁定状态
+            let originalCameraState = null; // 保存原始相机状态
+            
+            function togglePreviewMode() {
+                const previewButton = document.getElementById('previewButton');
+                const body = document.body;
+                
+                isPreviewMode = !isPreviewMode;
+                
+                if (isPreviewMode) {
+                    // 进入预览模式
+                    body.classList.add('preview-mode');
+                    previewButton.innerHTML = '<i class="fa-solid fa-xmark"></i> 退出预览';
+                    
+                    // 保存当前相机设置并修改为全手势控制
+                    if (window.scene && window.scene.activeCamera) {
+                        const camera = window.scene.activeCamera;
+                        
+                        // 保存相机控制按钮设置
+                        originalCameraControls = {
+                            buttons: camera.inputs.attached.pointers.buttons.slice()
+                        };
+                        
+                        // 保存相机完整状态 - 位置、旋转和缩放
+                        originalCameraState = {
+                            alpha: camera.alpha,
+                            beta: camera.beta,
+                            radius: camera.radius,
+                            target: camera.target.clone()
+                        };
+                        
+                        // 允许左键和触摸控制相机
+                        camera.inputs.attached.pointers.buttons = [0, 1, 2];
+                    }
+                    
+                    // 保存当前楼层锁定状态并锁定所有楼层
+                    if (window.loadedFloors) {
+                        // 复制当前锁定状态
+                        originalLockedFloors = {};
+                        for (const floorNumber in window.lockedFloors) {
+                            if (window.lockedFloors[floorNumber]) {
+                                originalLockedFloors[floorNumber] = true;
+                            }
+                        }
+                        
+                        // 锁定所有楼层
+                        for (const floorNumber in window.loadedFloors) {
+                            if (window.loadedFloors[floorNumber].isEnabled()) {
+                                // 移除拖动行为
+                                const floor = window.loadedFloors[floorNumber];
+                                const behaviors = floor.behaviors;
+                                if (behaviors && behaviors.length > 0) {
+                                    for (let i = 0; i < behaviors.length; i++) {
+                                        if (behaviors[i] instanceof BABYLON.PointerDragBehavior) {
+                                            floor.removeBehavior(behaviors[i]);
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // 标记为锁定
+                                window.lockedFloors[floorNumber] = true;
+                                
+                                // 更新锁定按钮样式
+                                const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
+                                if (lockBtn) {
+                                    lockBtn.classList.add('locked');
+                                    // 更新按钮内容
+                                    lockBtn.innerHTML = '';
+                                    
+                                    const lockIcon = document.createElement('i');
+                                    lockIcon.className = 'fa-solid fa-unlock';
+                                    
+                                    const lockText = document.createTextNode('解锁');
+                                    
+                                    lockBtn.appendChild(lockIcon);
+                                    lockBtn.appendChild(lockText);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // 退出预览模式
+                    body.classList.remove('preview-mode');
+                    previewButton.innerHTML = '<i class="fa-solid fa-eye"></i> 预览';
+                    
+                    // 恢复原始相机设置
+                    if (window.scene && window.scene.activeCamera) {
+                        const camera = window.scene.activeCamera;
+                        
+                        // 恢复相机控制按钮设置
+                        if (originalCameraControls.buttons) {
+                            camera.inputs.attached.pointers.buttons = originalCameraControls.buttons;
+                        }
+                        
+                        // 恢复相机位置、旋转和缩放
+                        if (originalCameraState) {
+                            camera.alpha = originalCameraState.alpha;
+                            camera.beta = originalCameraState.beta;
+                            camera.radius = originalCameraState.radius;
+                            camera.target = originalCameraState.target.clone();
+                        }
+                    }
+                    
+                    // 恢复楼层的原始锁定状态
+                    if (window.loadedFloors) {
+                        // 先重置所有锁定状态
+                        window.lockedFloors = {};
+                        
+                        // 恢复原有锁定状态
+                        for (const floorNumber in originalLockedFloors) {
+                            if (originalLockedFloors[floorNumber]) {
+                                window.lockedFloors[floorNumber] = true;
+                            }
+                        }
+                        
+                        // 重新应用拖动行为到所有可视楼层并更新UI
+                        for (const floorNumber in window.loadedFloors) {
+                            if (window.loadedFloors[floorNumber].isEnabled()) {
+                                const floor = window.loadedFloors[floorNumber];
+                                const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
+                                
+                                // 更新锁定按钮状态
+                                if (window.lockedFloors[floorNumber]) {
+                                    // 如果应该保持锁定状态
+                                    if (lockBtn) {
+                                        lockBtn.classList.add('locked');
+                                        lockBtn.innerHTML = '';
+                                        
+                                        const lockIcon = document.createElement('i');
+                                        lockIcon.className = 'fa-solid fa-unlock';
+                                        
+                                        const lockText = document.createTextNode('解锁');
+                                        
+                                        lockBtn.appendChild(lockIcon);
+                                        lockBtn.appendChild(lockText);
+                                    }
+                                } else {
+                                    // 如果应该是解锁状态
+                                    if (lockBtn) {
+                                        lockBtn.classList.remove('locked');
+                                        lockBtn.innerHTML = '';
+                                        
+                                        const lockIcon = document.createElement('i');
+                                        lockIcon.className = 'fa-solid fa-lock';
+                                        
+                                        const lockText = document.createTextNode('锁定');
+                                        
+                                        lockBtn.appendChild(lockIcon);
+                                        lockBtn.appendChild(lockText);
+                                    }
+                                    
+                                    // 应用拖动行为
+                                    window.makeFloorDraggable(floor);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             
             // 调用导航栏设置
             setupNavBar();
@@ -780,6 +961,9 @@
             // 创建场景
             const createScene = function() {
                 const scene = new BABYLON.Scene(engine);
+                
+                // 将场景保存到全局变量以便预览模式访问
+                window.scene = scene;
                 
                 // 设置背景色
                 scene.clearColor = new BABYLON.Color4(0.75, 0.85, 0.9, 1.0);
@@ -824,9 +1008,11 @@
                 
                 // 存储已加载的楼层
                 const loadedFloors = {};
+                window.loadedFloors = loadedFloors;
                 
                 // 存储已锁定的楼层
                 const lockedFloors = {};
+                window.lockedFloors = lockedFloors;
                 
                 // 当前选中的楼层 - 设置为全局变量
                 window.selectedFloor = null;
@@ -1200,9 +1386,9 @@
                     
                     const lockBtn = document.querySelector(`.lock-btn[data-floor="${floorNumber}"]`);
                     
-                    if (lockedFloors[floorNumber]) {
+                    if (window.lockedFloors[floorNumber]) {
                         // 解锁楼层
-                        delete lockedFloors[floorNumber];
+                        delete window.lockedFloors[floorNumber];
                         
                         // 重新添加拖动行为
                         makeFloorDraggable(floor);
@@ -1225,7 +1411,7 @@
                         console.log(`楼层 ${floorNumber} 已解锁`);
                     } else {
                         // 锁定楼层
-                        lockedFloors[floorNumber] = true;
+                        window.lockedFloors[floorNumber] = true;
                         
                         // 移除拖动行为
                         const behaviors = floor.behaviors;
@@ -1259,9 +1445,12 @@
                 
                 // 使楼层可拖动
                 function makeFloorDraggable(floor) {
+                    // 使用全局scene对象
+                    const scene = window.scene;
+                    
                     // 检查是否已锁定
                     const floorNumber = floor.name.replace('floor', '');
-                    if (lockedFloors[floorNumber]) {
+                    if (window.lockedFloors[floorNumber]) {
                         return; // 如果已锁定，则不添加拖动行为
                     }
                     
@@ -1323,17 +1512,25 @@
                     floor.getChildMeshes().forEach(mesh => {
                         mesh.isPickable = true;
                         
-                        mesh.actionManager = new BABYLON.ActionManager(scene);
-                        mesh.actionManager.registerAction(
-                            new BABYLON.ExecuteCodeAction(
-                                BABYLON.ActionManager.OnPickTrigger,
-                                function() {
-                                    window.selectedFloor = floor;
-                                }
-                            )
-                        );
+                        // 检查是否已存在ActionManager
+                        if (!mesh.actionManager) {
+                            mesh.actionManager = new BABYLON.ActionManager(scene);
+                            mesh.actionManager.registerAction(
+                                new BABYLON.ExecuteCodeAction(
+                                    BABYLON.ActionManager.OnPickTrigger,
+                                    function() {
+                                        window.selectedFloor = floor;
+                                    }
+                                )
+                            );
+                        }
                     });
+                    
+                    return true; // 返回成功状态
                 }
+                
+                // 将makeFloorDraggable函数添加到全局window对象，以便在预览模式中使用
+                window.makeFloorDraggable = makeFloorDraggable;
                 
                 // 添加高度和方向控制
                 function setupHeightControls() {
