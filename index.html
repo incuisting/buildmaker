@@ -752,9 +752,16 @@
                         loadingStatus.innerHTML = '正在扫描楼层模型文件...';
                         document.body.appendChild(loadingStatus);
                         
-                        // 使用XMLHttpRequest获取build目录下的文件列表
+                        // 从URL获取name参数
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const folderName = urlParams.get('name');
+                        
+                        // 确定模型路径
+                        const modelPath = folderName ? `build/${folderName}/` : 'build/';
+                        
+                        // 使用XMLHttpRequest获取模型目录下的文件列表
                         const xhr = new XMLHttpRequest();
-                        xhr.open('GET', 'build/', true);
+                        xhr.open('GET', modelPath, true);
                         xhr.onreadystatechange = function() {
                             if (xhr.readyState === 4) {
                                 if (xhr.status === 200) {
@@ -778,19 +785,19 @@
                                     objFiles.sort((a, b) => parseInt(a) - parseInt(b));
                                     
                                     document.body.removeChild(loadingStatus);
-                                    resolve(objFiles);
+                                    resolve({files: objFiles, path: modelPath});
                                 } else {
                                     // 如果无法获取文件列表，使用默认的1-8楼层
                                     console.error('无法获取楼层模型文件列表，使用默认值');
                                     document.body.removeChild(loadingStatus);
-                                    resolve(['1', '2', '3', '4', '5', '6', '7', '8']);
+                                    resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: 'build/'});
                                 }
                             }
                         };
                         xhr.onerror = function() {
                             console.error('获取楼层模型文件列表时发生错误，使用默认值');
                             document.body.removeChild(loadingStatus);
-                            resolve(['1', '2', '3', '4', '5', '6', '7', '8']);
+                            resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: 'build/'});
                         };
                         xhr.send();
                     });
@@ -891,7 +898,9 @@
                 // 预加载所有楼层模型
                 async function preloadAllFloors() {
                     // 获取楼层模型文件列表
-                    const floorNumbers = await getFloorModelFiles();
+                    const modelData = await getFloorModelFiles();
+                    const floorNumbers = modelData.files;
+                    const modelPath = modelData.path;
                     
                     // 创建楼层按钮
                     createFloorButtons(floorNumbers);
@@ -919,7 +928,7 @@
                     // 遍历所有楼层编号并加载
                     floorNumbers.forEach(floorNumber => {
                         // 加载OBJ模型
-                        BABYLON.SceneLoader.ImportMesh("", "build/", `${floorNumber}.obj`, scene, function(meshes) {
+                        BABYLON.SceneLoader.ImportMesh("", modelPath, `${floorNumber}.obj`, scene, function(meshes) {
                             // 创建一个父节点来包含所有的网格
                             const floorParent = new BABYLON.TransformNode(`floor${floorNumber}`, scene);
                             
@@ -944,11 +953,11 @@
                             
                             const originalHeight = maxY - minY;
                             
-                            // 将模型缩小到原来的3%
-                            floorParent.scaling = new BABYLON.Vector3(0.01, 0.01, 0.01);
+                            // 将模型缩小到原来的2.1%（原先3%的基础上再小30%）
+                            floorParent.scaling = new BABYLON.Vector3(0.007, 0.007, 0.007);
                             
                             // 计算缩放后的高度
-                            const scaledHeight = originalHeight * 0.01;
+                            const scaledHeight = originalHeight * 0.007;
                             
                             // 设置固定的Y轴位置为0
                             const yPosition = 0;
@@ -1233,8 +1242,8 @@
                     const moveRightBtn = document.getElementById('moveRight');
                     const resetBtn = document.getElementById('resetBtn');
                     
-                    const heightStep = 0.03; // 高度步长
-                    const moveStep = 0.05; // 水平移动步长
+                    const heightStep = 0.01; // 高度步长
+                    const moveStep = 0.01; // 水平移动步长
                     
                     // 上下移动控制
                     moveUpBtn.addEventListener('click', function() {
