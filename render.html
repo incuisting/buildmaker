@@ -649,8 +649,12 @@
     <!-- 引入 Babylon.js 库 -->
     <script src="babylon.js"></script>
     <script src="babylonjs.loaders.min.js"></script>
+    <!-- 引入建筑配置文件 -->
+    <script src="buildConfig.js"></script>
+    <!-- 引入Electron修复脚本 -->
+    <script src="electron-fix.js"></script>
     <!-- 引入Font Awesome图标库 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="all.min.css">
 </head>
 <body>
     <!-- 顶部导航栏 -->
@@ -753,24 +757,19 @@
                 const nameParam = urlParams.get('name') || '未命名项目';
                 const navTitle = document.getElementById('navTitle');
                 
-                // 从name.json中获取标题
-                fetch(`name.json`)
-                    .then(response => response.json())
-                    .then(data => {
-                        // 检查是否有folderName属性且存在对应的nameParam键
-                        console.log('data',data);
-                        if (data && data[nameParam]) {
-                            navTitle.innerText = data[nameParam];
-                        } else {
-                            // 如果没有找到对应的键，则使用URL参数中的name
-                            navTitle.innerText = decodeURIComponent(nameParam);
-                        }
-                    })
-                    .catch(error => {
-                        // 如果加载失败，使用URL参数中的name
-                        console.error('加载name.json失败:', error);
+                // 使用buildingNames获取标题，不再通过fetch获取
+                try {
+                    // 如果buildingNames存在且包含对应名称
+                    if (buildingNames && buildingNames[nameParam]) {
+                        navTitle.innerText = buildingNames[nameParam];
+                    } else {
+                        // 如果找不到对应的名称，使用参数
                         navTitle.innerText = decodeURIComponent(nameParam);
-                    });
+                    }
+                } catch (error) {
+                    console.error('获取建筑名称失败:', error);
+                    navTitle.innerText = decodeURIComponent(nameParam);
+                }
                 
                 // 返回按钮点击事件
                 const backButton = document.getElementById('backButton');
@@ -1038,7 +1037,7 @@
                         loadingStatus.style.borderRadius = '10px';
                         loadingStatus.style.zIndex = '1000';
                         loadingStatus.style.textAlign = 'center';
-                        loadingStatus.innerHTML = '正在扫描楼层模型文件...';
+                        loadingStatus.innerHTML = '正在加载楼层配置...';
                         document.body.appendChild(loadingStatus);
                         
                         // 从URL获取name参数
@@ -1048,47 +1047,25 @@
                         // 确定模型路径
                         const modelPath = folderName ? `build/${folderName}/` : 'build/';
                         
-                        // 使用XMLHttpRequest获取模型目录下的文件列表
-                        const xhr = new XMLHttpRequest();
-                        xhr.open('GET', modelPath, true);
-                        xhr.onreadystatechange = function() {
-                            if (xhr.readyState === 4) {
-                                if (xhr.status === 200) {
-                                    // 解析返回的HTML内容，提取.obj文件
-                                    const parser = new DOMParser();
-                                    const htmlDoc = parser.parseFromString(xhr.responseText, 'text/html');
-                                    const links = htmlDoc.querySelectorAll('a');
-                                    const objFiles = [];
-                                    
-                                    links.forEach(link => {
-                                        const href = link.getAttribute('href');
-                                        if (href && href.endsWith('.obj')) {
-                                            // 提取楼层编号（文件名去掉.obj后缀）
-                                            const fileName = href.split('/').pop();
-                                            const floorNumber = fileName.replace('.obj', '');
-                                            objFiles.push(floorNumber);
-                                        }
-                                    });
-                                    
-                                    // 按楼层编号排序
-                                    objFiles.sort((a, b) => parseInt(a) - parseInt(b));
-                                    
-                                    document.body.removeChild(loadingStatus);
-                                    resolve({files: objFiles, path: modelPath});
-                                } else {
-                                    // 如果无法获取文件列表，使用默认的1-8楼层
-                                    console.error('无法获取楼层模型文件列表，使用默认值');
-                                    document.body.removeChild(loadingStatus);
-                                    resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: 'build/'});
-                                }
+                        try {
+                            // 使用buildConfig中的预定义配置获取楼层列表
+                            if (folderName && buildConfig && buildConfig[folderName]) {
+                                // 如果存在指定建筑的配置，使用它
+                                const floorList = buildConfig[folderName];
+                                document.body.removeChild(loadingStatus);
+                                resolve({files: floorList, path: modelPath});
+                            } else {
+                                // 如果不存在特定配置，使用默认值
+                                console.warn('找不到指定建筑的配置，使用默认配置');
+                                document.body.removeChild(loadingStatus);
+                                resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: modelPath});
                             }
-                        };
-                        xhr.onerror = function() {
-                            console.error('获取楼层模型文件列表时发生错误，使用默认值');
+                        } catch (error) {
+                            // 出错时使用默认楼层列表
+                            console.error('获取楼层配置出错，使用默认值', error);
                             document.body.removeChild(loadingStatus);
-                            resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: 'build/'});
-                        };
-                        xhr.send();
+                            resolve({files: ['1', '2', '3', '4', '5', '6', '7', '8'], path: modelPath});
+                        }
                     });
                 }
                 
@@ -1242,7 +1219,7 @@
                             
                             const originalHeight = maxY - minY;
                             
-                            // 将模型缩小到原来的2.1%（原先3%的基础上再小30%）
+                            // 将模型缩小到原来的2.1%
                             floorParent.scaling = new BABYLON.Vector3(0.007, 0.007, 0.007);
                             
                             // 计算缩放后的高度

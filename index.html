@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>建筑列表</title>
+    <!-- 引入建筑配置文件 -->
+    <script src="buildConfig.js"></script>
+    <!-- 引入Electron修复脚本 -->
+    <script src="electron-fix.js"></script>
     <style>
         html, body {
             width: 100%;
@@ -89,14 +93,14 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            fetch('name.json')
-                .then(response => response.json())
-                .then(data => {
+            // 使用本地buildingNames对象创建卡片，不再从服务器获取
+            try {
+                if (typeof buildingNames !== 'undefined') {
                     const cardContainer = document.getElementById('cardContainer');
                     
-                    for (const key in data) {
-                        if (data.hasOwnProperty(key)) {
-                            const value = data[key];
+                    for (const key in buildingNames) {
+                        if (buildingNames.hasOwnProperty(key)) {
+                            const value = buildingNames[key];
                             
                             // 创建卡片元素
                             const card = document.createElement('div');
@@ -121,12 +125,51 @@
                             cardContainer.appendChild(card);
                         }
                     }
-                })
-                .catch(error => {
-                    console.error('获取数据时出错:', error);
-                    document.getElementById('cardContainer').innerHTML = 
-                        '<div style="text-align: center; color: red;">加载数据失败，请刷新页面重试</div>';
-                });
+                } else {
+                    throw new Error('buildingNames未定义');
+                }
+            } catch (error) {
+                console.error('获取数据时出错:', error);
+                // 尝试回退到fetch方法
+                fetch('name.json')
+                    .then(response => response.json())
+                    .then(data => {
+                        const cardContainer = document.getElementById('cardContainer');
+                        
+                        for (const key in data) {
+                            if (data.hasOwnProperty(key)) {
+                                const value = data[key];
+                                
+                                // 创建卡片元素
+                                const card = document.createElement('div');
+                                card.className = 'card';
+                                card.addEventListener('click', function() {
+                                    window.location.href = `render.html?name=${key}`;
+                                });
+                                
+                                // 卡片内容
+                                const contentDiv = document.createElement('div');
+                                contentDiv.className = 'card-content';
+                                contentDiv.textContent = value;
+                                
+                                // 卡片键名（小标识）
+                                const keyDiv = document.createElement('div');
+                                keyDiv.className = 'card-key';
+                                
+                                // 将内容添加到卡片
+                                card.appendChild(contentDiv);
+                                
+                                // 将卡片添加到容器
+                                cardContainer.appendChild(card);
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('获取数据时出错:', error);
+                        document.getElementById('cardContainer').innerHTML = 
+                            '<div style="text-align: center; color: red;">加载数据失败，请刷新页面重试</div>';
+                    });
+            }
         });
     </script>
 </body>
