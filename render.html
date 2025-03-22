@@ -1927,7 +1927,7 @@
                     
                     // 根据百分比计算相机目标的Y坐标
                     const minY = 0; // 最小Y值（地面高度）
-                    const maxY = 2;  // 最大Y值
+                    const maxY = 10;  // 最大Y值，从2改为10
                     camera.target.y = minY + (positionPercent * (maxY - minY));
                     
                     // 更新滑块位置
@@ -2001,7 +2001,7 @@
                     // 计算滑块位置百分比（基于相机目标Y值的范围）
                     // 修改最小Y值为0，确保不低于地面
                     const minY = 0; // 最小Y值（地面高度）
-                    const maxY = 2;  // 最大Y值
+                    const maxY = 10;  // 最大Y值，从2改为10
                     const percent = Math.min(1, Math.max(0, (camera.target.y - minY) / (maxY - minY)));
                     
                     // 获取滑块容器的高度，减去滑块手柄高度和顶部内边距
@@ -2029,7 +2029,7 @@
                 // 确保Y轴滑块初始位置与相机目标Y轴位置(0.5)同步
                 function initYAxisHandlePosition() {
                     const minY = 0;
-                    const maxY = 2;
+                    const maxY = 10; // 从5改为10
                     const initialY = 0.5; // 与相机初始Y轴位置同步
                     const percent = (initialY - minY) / (maxY - minY);
                     

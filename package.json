@@ -1,7 +1,7 @@
 {
   "name": "ancient-buildings-3d",
   "version": "1.0.0",
-  "description": "中国古建筑3D模型展示应用",
+  "description": "3D模型展示应用",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -11,9 +11,8 @@
     "dist:win": "electron-builder --win --x64"
   },
   "keywords": [
-    "古建筑",
     "3D模型",
-    "中国建筑"
+    "建筑"
   ],
   "author": "Your Name",
   "license": "MIT",
@@ -23,8 +22,8 @@
   },
   "build": {
     "appId": "com.toybuild.ancientbuildings",
-    "productName": "中国古建筑3D模型",
-    "copyright": "Copyright © 2023",
+    "productName": "3D模型",
+    "copyright": "Copyright © 2025",
     "directories": {
       "output": "release"
     },
@@ -53,14 +52,14 @@
       "target": [
         "nsis"
       ],
-      "icon": "app-icon.ico"
+      "icon": "icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "中国古建筑3D模型"
+      "shortcutName": "3D模型"
     }
   }
 } 

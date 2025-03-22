@@ -15,7 +15,7 @@ function createWindow() {
       webSecurity: false, // 禁用同源策略，解决CORS问题
       preload: path.join(__dirname, 'preload.js') // 添加preload脚本
     },
-    icon: path.join(__dirname, 'app-icon.png')
+    icon: path.join(__dirname, 'icon.ico')
   });
 
   // 加载index.html
